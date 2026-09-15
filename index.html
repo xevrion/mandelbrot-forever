@@ -5,141 +5,132 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mandelbrot forever</title>
 <meta name="description" content="an infinitely detailed shape from one line of math. zoom in forever.">
-<meta name="theme-color" content="#11111b">
+<meta name="theme-color" content="#0c0c0f">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* direction: a dark instrument. the fractal is the only thing that gets
+     color. everything else is near-black, neutral gray text, one accent used
+     maybe three times on the whole page. no gradients on chrome, no glass, no
+     glow, no entrance animation. restraint is the design. */
   :root{
-    --bg:#11111b;--panel:#181825;--panel2:#1e1e2e;--line:#313244;--line2:#45475a;
-    --text:#cdd6f4;--dim:#a6adc8;--muted:#7f849c;--faint:#585b70;
-    --mauve:#cba6f7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387;--teal:#94e2d5;--pink:#f5c2e7;--yellow:#f9e2af;--red:#f38ba8;
-    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",system-ui,sans-serif;
-    --mono:ui-monospace,"JetBrains Mono","SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --bg:#0c0c0f;--surface:#141418;--surface2:#1b1b21;--line:#26262e;
+    --text:#ececf1;--dim:#9c9cab;--muted:#5f5f6e;--accent:#8b7cf6;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   *{box-sizing:border-box}
-  html{scrollbar-width:thin;scrollbar-color:var(--line2) transparent;-webkit-text-size-adjust:100%}
-  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
-  ::selection{background:rgba(203,166,247,.35)}
+  html{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
   body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;
-    -webkit-font-smoothing:antialiased;background-image:radial-gradient(1200px 600px at 50% -200px,rgba(203,166,247,.08),transparent 70%)}
-  a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(137,180,250,.35)}
-  a:hover{border-bottom-color:var(--blue)}
-  header{padding:38px 20px 10px;max-width:1120px;margin:0 auto}
-  h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1.15;
-    background:linear-gradient(90deg,var(--mauve),var(--pink) 45%,var(--peach));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
-  header p{margin:8px 0 0;color:var(--dim);max-width:70ch;font-size:15.5px}
-  main{max-width:1120px;margin:0 auto;padding:14px 20px 80px;display:grid;gap:20px}
-  main>*{min-width:0}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px}
-  .panel h2{margin:0 0 12px;font-size:11.5px;color:var(--peach);text-transform:uppercase;letter-spacing:1.8px;font-weight:600}
+    -webkit-font-smoothing:antialiased}
 
-  /* the viewer */
-  .stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line2);background:#000;cursor:crosshair;user-select:none;
-    -webkit-user-select:none;touch-action:none;box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4)}
+  header{padding:40px 24px 20px;max-width:1160px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 10px;letter-spacing:.02em}
+  h1{margin:0;font-size:clamp(28px,4vw,40px);font-weight:600;letter-spacing:-.02em;line-height:1.1}
+  header p{margin:10px 0 0;color:var(--dim);max-width:64ch;font-size:16px}
+  header p b{color:var(--text);font-weight:500}
+
+  main{max-width:1160px;margin:0 auto;padding:0 24px 80px;display:grid;gap:40px}
+  main>*{min-width:0}
+
+  /* the explorer. this is the whole point of the page. */
+  .stage{position:relative;border-radius:8px;overflow:hidden;background:#000;cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:none;
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 60px rgba(0,0,0,.55)}
   .stage.grabbing{cursor:grabbing}
   canvas#view{width:100%;display:block}
-  canvas#julia{position:absolute;right:14px;bottom:14px;width:200px;height:130px;border-radius:10px;border:1px solid rgba(255,255,255,.14);
-    background:#000;opacity:0;transform:translateY(6px);transition:opacity .22s,transform .22s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.6)}
-  canvas#julia.on{opacity:1;transform:none}
-  .jlabel{position:absolute;right:22px;bottom:118px;font-family:var(--mono);font-size:10.5px;letter-spacing:.4px;color:var(--text);
-    background:rgba(17,17,27,.72);backdrop-filter:blur(6px);padding:2px 7px;border-radius:5px;opacity:0;transition:opacity .22s;pointer-events:none;z-index:2}
+  canvas#julia{position:absolute;right:12px;bottom:12px;width:200px;height:130px;border-radius:6px;
+    background:#000;opacity:0;transition:opacity .18s;pointer-events:none;outline:1px solid rgba(255,255,255,.12)}
+  canvas#julia.on{opacity:1}
+  .jlabel{position:absolute;right:12px;bottom:148px;font-family:var(--mono);font-size:11px;color:var(--dim);
+    background:rgba(12,12,15,.85);padding:3px 8px;border-radius:4px;opacity:0;transition:opacity .18s;pointer-events:none}
   .jlabel.on{opacity:1}
-  .hud{position:absolute;left:14px;top:14px;background:rgba(17,17,27,.74);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 13px 11px;font-family:var(--mono);font-size:11.5px;color:var(--dim);
-    pointer-events:none;line-height:1.75;min-width:238px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
-  .hud .zoom{font-size:19px;color:var(--yellow);font-weight:600;letter-spacing:-.3px;line-height:1.3;margin-bottom:3px}
+  .hud{position:absolute;left:12px;top:12px;background:rgba(12,12,15,.82);border-radius:6px;padding:10px 12px 9px;
+    font-family:var(--mono);font-size:12px;color:var(--dim);pointer-events:none;line-height:1.7;min-width:236px}
+  .hud .zoom{font-size:20px;font-weight:600;color:var(--text);line-height:1.1;margin-bottom:6px;letter-spacing:-.01em}
   .hud .row{display:flex;justify-content:space-between;gap:14px}
-  .hud .row span:first-child{color:var(--faint)}
-  .hud .row b{color:var(--teal);font-weight:500}
-  .hud .status{margin-top:4px;padding-top:5px;border-top:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:10.5px;display:flex;justify-content:space-between;gap:10px}
-  .hud .status .eng{color:var(--green)}
-  .hud .status .eng.cpu{color:var(--peach)}
-  .prog{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,var(--mauve),var(--pink));width:0%;transition:width .1s,opacity .3s;opacity:0}
+  .hud .row span:first-child{color:var(--muted)}
+  .hud .row b{color:var(--text);font-weight:500}
+  .hud .status{margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:11px;display:flex;justify-content:space-between;gap:10px}
+  .prog{position:absolute;left:0;top:0;height:2px;background:var(--accent);width:0%;transition:width .08s;opacity:0}
   .prog.on{opacity:1}
-  .hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--dim);
-    background:rgba(17,17,27,.72);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);padding:5px 11px;border-radius:99px;
-    pointer-events:none;opacity:0;transition:opacity .5s;white-space:nowrap}
+  .hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--dim);
+    background:rgba(12,12,15,.85);padding:4px 10px;border-radius:4px;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap}
   .hint.on{opacity:1}
 
-  /* controls */
-  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
-  .toolbar .spacer{flex:1}
-  .group{display:flex;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:5px 7px 5px 11px;min-height:42px}
-  .group>span.lbl{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;margin-right:4px;font-weight:600}
-  button{background:var(--line);color:var(--text);border:1px solid transparent;padding:7px 13px;border-radius:9px;font-family:inherit;cursor:pointer;
-    font-size:13px;font-weight:500;line-height:1.3;transition:background .12s,border-color .12s,color .12s,transform .06s,box-shadow .12s}
-  button:hover{background:var(--line2)}
-  button:active{transform:translateY(1px)}
-  button:focus-visible{outline:2px solid var(--mauve);outline-offset:2px}
-  button.primary{background:var(--mauve);color:#11111b;font-weight:600}
-  button.primary:hover{background:#dbc1fb}
-  button.icon{width:32px;padding:6px 0;text-align:center;font-family:var(--mono);font-size:15px}
-  button.ghost{background:transparent;border-color:var(--line2)}
-  button.ghost:hover{background:var(--line)}
-  button.toggle{background:transparent;border-color:var(--line2);color:var(--muted);font-size:12px;padding:5px 9px;letter-spacing:.3px}
-  button.toggle.on{background:rgba(203,166,247,.16);border-color:rgba(203,166,247,.5);color:var(--mauve)}
-  .swatches{display:flex;gap:6px}
-  .swatch{width:34px;height:24px;border-radius:7px;border:2px solid transparent;padding:0;background-clip:padding-box;position:relative;
-    box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
-  .swatch:hover{transform:translateY(-1px)}
-  .swatch.on{border-color:var(--text);box-shadow:0 0 0 2px var(--panel2),0 0 14px rgba(203,166,247,.35)}
-  .slider{display:flex;align-items:center;gap:8px}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:104px;height:22px;background:transparent;margin:0;cursor:pointer}
-  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,var(--mauve) var(--p,0%),var(--line2) var(--p,0%))}
-  input[type=range]::-moz-range-track{height:4px;border-radius:99px;background:var(--line2)}
-  input[type=range]::-moz-range-progress{height:4px;border-radius:99px;background:var(--mauve)}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--text);border:3px solid var(--panel2);
-    margin-top:-5.5px;box-shadow:0 1px 6px rgba(0,0,0,.5);transition:transform .1s}
-  input[type=range]::-moz-range-thumb{width:9px;height:9px;border-radius:50%;background:var(--text);border:3px solid var(--panel2);box-shadow:0 1px 6px rgba(0,0,0,.5)}
-  input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15)}
-  input[type=range]:focus-visible{outline:2px solid var(--mauve);outline-offset:2px;border-radius:6px}
-  .val{color:var(--teal);font-family:var(--mono);font-size:12px;min-width:38px;text-align:right}
-  .spots{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;align-items:center}
-  .spots .lbl{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;font-weight:600;margin-right:4px}
-  .spots button{font-size:12.5px;padding:6px 13px;background:var(--panel2);border:1px solid var(--line);border-radius:99px;color:var(--dim)}
-  .spots button:hover{border-color:var(--mauve);color:var(--mauve);background:rgba(203,166,247,.08)}
-  .spots button.on{border-color:rgba(203,166,247,.6);color:var(--mauve);background:rgba(203,166,247,.14)}
-  .keys{color:var(--muted);font-size:12px;margin-top:14px;display:flex;flex-wrap:wrap;gap:6px 16px}
-  .keys kbd{background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 6px;font-size:11px;color:var(--text);font-family:var(--mono)}
+  /* controls: plain, aligned. buttons are solid surfaces, one accent. */
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+  .group{display:flex;gap:8px;align-items:center;padding:0 4px 0 10px;height:36px;background:var(--surface);border-radius:6px}
+  .group>span.lbl{font-family:var(--mono);color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .group button{height:28px;padding:0 10px;background:var(--surface2)}
+  button{background:var(--surface);color:var(--text);border:0;height:36px;padding:0 14px;border-radius:6px;
+    font-family:var(--sans);font-weight:500;cursor:pointer;font-size:13.5px;transition:background .12s}
+  button:hover{background:var(--surface2)}
+  button:active{background:var(--line)}
+  button:focus-visible{outline:1px solid var(--accent);outline-offset:1px}
+  button.primary{background:var(--accent);color:#0c0c0f;font-weight:600}
+  button.primary:hover{background:#9d90f8}
+  .group button.toggle{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:transparent;padding:0 8px}
+  .group button.toggle.on{color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .group.seg{gap:2px}
+  .group.seg .lbl{margin-right:6px}
+  .group button.toggle:disabled{opacity:.4;cursor:not-allowed}
+  .swatches{display:flex;gap:5px;padding-right:6px}
+  .group button.swatch{width:30px;height:20px;padding:0;border-radius:4px;background-clip:padding-box;opacity:.75;transition:opacity .12s}
+  .group button.swatch:hover{opacity:1}
+  .group button.swatch.on{opacity:1;box-shadow:0 0 0 1px var(--bg),0 0 0 2px var(--text)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:120px;height:3px;border-radius:99px;background:var(--line);cursor:pointer;margin:0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--text);border:0}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--text);border:0}
+  input[type=range]:focus{outline:none}
+  input[type=range]:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+  .val{font-family:var(--mono);color:var(--text);font-size:12px;min-width:38px;text-align:right;padding-right:6px}
+  .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+  .spots .lbl{font-family:var(--mono);color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase;margin-right:4px}
+  .spots button{height:30px;padding:0 11px;font-family:var(--mono);font-size:12px;font-weight:400;background:transparent;color:var(--dim);
+    box-shadow:0 0 0 1px var(--line) inset}
+  .spots button:hover{color:var(--text);background:var(--surface)}
+  .spots button.on{color:var(--text);box-shadow:0 0 0 1px var(--accent) inset}
+  .keys{color:var(--muted);font-family:var(--mono);font-size:11.5px;margin-top:12px;display:flex;flex-wrap:wrap;gap:14px}
+  .keys kbd{font-family:var(--mono);color:var(--dim);background:var(--surface);border-radius:4px;padding:1px 6px;font-size:11px}
 
-  .why{color:var(--dim);font-size:13.5px;margin-top:16px;line-height:1.7;border-top:1px dashed var(--line);padding-top:14px}
-  .why b{color:var(--text);font-weight:600}
-  .explain{color:var(--dim);line-height:1.75}
-  .explain h3{color:var(--teal);font-size:15px;font-weight:600;margin:22px 0 6px;letter-spacing:-.1px}
+  /* everything below the explorer is secondary. plain text, no boxes. */
+  .panel{padding:0}
+  .why{color:var(--dim);font-size:14.5px;margin-top:18px;line-height:1.7;max-width:80ch}
+  .why b{color:var(--text);font-weight:500}
+  .explain{color:var(--dim);line-height:1.75;font-size:15px;max-width:80ch}
+  .explain h3{color:var(--text);font-size:17px;font-weight:600;letter-spacing:-.01em;margin:26px 0 8px}
   .explain h3:first-child{margin-top:0}
   .explain p{margin:0 0 10px}
-  .explain b{color:var(--text);font-weight:600}
-  .explain pre{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:var(--green);margin:6px 0 14px}
-  .explain code{color:var(--peach);font-family:var(--mono);font-size:.92em}
+  .explain b{color:var(--text);font-weight:500}
+  .explain pre{background:var(--surface);border-radius:6px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);
+    font-size:12.5px;line-height:1.55;color:var(--text);margin:8px 0 14px}
+  .explain code{font-family:var(--mono);color:var(--text);background:var(--surface);padding:1px 5px;border-radius:4px;font-size:.92em}
+  .explain a{color:var(--accent);text-decoration:none}
+  .explain a:hover{text-decoration:underline}
   .explain sup{font-size:10px}
-  footer{max-width:1120px;margin:0 auto;padding:0 20px 40px;color:var(--faint);font-size:12.5px}
+  hr.sep{border:0;height:1px;background:var(--line);margin:0}
+
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
-  @media(max-width:760px){
-    header{padding:24px 16px 6px} h1{font-size:25px} header p{font-size:14px}
-    main{padding:10px 12px 60px;gap:14px} .panel{padding:16px 15px;border-radius:14px}
-    canvas#julia,.jlabel{display:none}
-    .hud{min-width:0;font-size:10.5px;padding:7px 10px;left:10px;top:10px;line-height:1.6}
-    .hud .zoom{font-size:16px;margin:0} .hud .row{display:none} .hud .row:nth-child(4){display:flex} .hud .row span:first-child{display:none} .hud .status{display:none}
-    .group{padding:4px 6px 4px 9px;min-height:38px;max-width:100%;flex-wrap:wrap} input[type=range]{width:96px}
-    .swatches{flex-wrap:wrap} .swatch{width:28px;height:22px}
-    .toolbar .spacer{display:none}
-    .hint{display:none}
+  @media(max-width:700px){
+    header{padding:28px 16px 14px}main{padding:0 12px 60px;gap:28px}
+    canvas#julia,.jlabel,.hint{display:none}
+    .hud{min-width:0;font-size:11px;padding:7px 10px;line-height:1.6}.hud .zoom{font-size:16px;margin:0}
+    .hud .row{display:none}.hud .row:nth-child(4){display:flex}.hud .row span:first-child{display:none}.hud .status{display:none}
+    input[type=range]{width:88px}.group{padding-left:8px;max-width:100%;height:auto;min-height:36px;flex-wrap:wrap;padding-top:4px;padding-bottom:4px}
+    .swatches{flex-wrap:wrap}.group button.swatch{width:26px;height:20px}
   }
 </style>
 </head>
 <body>
 <header>
+  <p class="eyebrow">z = z&sup2; + c</p>
   <h1>mandelbrot forever</h1>
   <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. all of it comes from one line of math, repeated.</p>
 </header>
 <main>
-  <div class="panel explain">
-    <h3>wait, what is this</h3>
-    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
-    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds or thousands of times.</p>
-    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom, drag to pan, pinch on a phone. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
-  </div>
-
   <div class="panel">
-    <h2>explore</h2>
     <div class="stage" id="stage">
       <canvas id="view"></canvas>
       <div class="prog" id="prog"></div>
@@ -148,29 +139,39 @@
         <div class="row"><span>re</span><b id="hre"></b></div>
         <div class="row"><span>im</span><b id="him"></b></div>
         <div class="row"><span>iterations</span><b id="hit"></b></div>
-        <div class="status"><span class="eng" id="heng"></span><span id="htime"></span></div>
+        <div class="status"><span id="heng"></span><span id="htime"></span></div>
       </div>
       <div class="hint" id="hint">click to zoom in, scroll to zoom, drag to pan</div>
       <div class="jlabel" id="jlabel">julia set at cursor</div>
       <canvas id="julia" width="400" height="260"></canvas>
     </div>
     <div class="toolbar">
-      <div class="group" style="padding-left:6px"><button class="primary" id="reset">reset</button><button class="icon ghost" id="zoomOut" title="zoom out">-</button><button class="icon ghost" id="zoomIn" title="zoom in">+</button></div>
+      <button class="primary" id="reset">reset</button>
+      <div class="group"><span class="lbl">zoom</span><button id="zoomIn" title="zoom in">+</button><button id="zoomOut" title="zoom out">-</button></div>
       <div class="group"><span class="lbl">palette</span><div class="swatches" id="palettes"></div></div>
-      <div class="group slider"><span class="lbl">shift</span><input id="phase" type="range" min="0" max="100" value="0"><span class="val" id="phasev">0</span></div>
-      <div class="group slider"><span class="lbl">detail</span><input id="iter" type="range" min="100" max="20000" step="50" value="500"><span class="val" id="iterv">500</span><button class="toggle on" id="auto" title="pick iterations from the zoom level">auto</button></div>
-      <div class="spacer"></div>
-      <button class="ghost" id="save">save png</button>
-      <button class="ghost" id="share">copy link</button>
+      <div class="group"><span class="lbl">shift</span><input id="phase" type="range" min="0" max="100" value="0"><span class="val" id="phasev">0</span></div>
+      <div class="group"><span class="lbl">detail</span><input id="iter" type="range" min="100" max="20000" step="50" value="500"><span class="val" id="iterv">500</span><button class="toggle on" id="auto" title="pick iterations from the zoom level">auto</button></div>
+      <div class="group seg"><span class="lbl">render</span><button class="toggle" id="engGpu" title="webgl2 fragment shader">gpu</button><button class="toggle" id="engCpu" title="web workers">cpu</button></div>
+      <button id="save">save png</button>
+      <button id="share">copy link</button>
     </div>
     <div class="spots" id="spots"><span class="lbl">places</span></div>
     <div class="keys">
-      <span><kbd>click</kbd> glide in</span><span><kbd>scroll</kbd> zoom</span><span><kbd>drag</kbd> pan</span>
+      <span><kbd>click</kbd> glide in</span><span><kbd>scroll</kbd> zoom</span><span><kbd>drag</kbd> pan</span><span><kbd>pinch</kbd> zoom on touch</span>
       <span><kbd>+</kbd> <kbd>-</kbd> zoom</span><span><kbd>arrows</kbd> pan</span><span><kbd>r</kbd> reset</span><span><kbd>j</kbd> toggle julia</span>
     </div>
     <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (left-right is the real part, up-down is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast: points far from the set escape in a few steps, points hugging the edge take hundreds. <b>detail</b> is the max iterations before we give up and call a point black. deep zooms need more of it because points near the edge take longer to decide, so by default it rises on its own as you zoom (that's the <b>auto</b> button), and you can drag the slider to override it. <b>shift</b> rotates the colors through the palette live. the corner window is the julia set for wherever your mouse is, and every point in the complex plane has its own, so you're seeing an infinite family of fractals by just moving your hand. the hud shows zoom: 1x is the whole shape, and you can go to about a hundred million million million million x (10<sup>26</sup>) before the numbers run out of precision.</div>
   </div>
 
+  <hr class="sep">
+  <div class="panel explain">
+    <h3>wait, what is this</h3>
+    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
+    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds or thousands of times.</p>
+    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom, drag to pan, pinch on a phone. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
+  </div>
+
+  <hr class="sep">
   <div class="panel explain">
     <h3>how it's actually built (the whole thing is one file)</h3>
     <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count the steps until it escapes:</p>
@@ -203,7 +204,7 @@ if (|z| &lt; |dz|) { dz = z; n = 0; }   // "rebasing": if the offset got bigger 
     <p>plain 64-bit doubles for the reference point run out at about 10<sup>13</sup>x, and you could feel it: panning would freeze because one pixel of movement was smaller than the gap between two representable numbers. so the center of the view is stored as a <b>double-double</b>, two floats stacked so the second one holds the rounding error of the first. that gives about 32 digits, which is enough for the reference orbit to stay honest out to roughly 10<sup>26</sup>x.</p>
 
     <h3>and when there is no gpu</h3>
-    <p>if webgl2 isn't available (or the gpu bails out mid-session) the page falls back to plain javascript spread across <b>web workers</b>, one per cpu core, running the same math in doubles (the plain loop when shallow, perturbation once you are deep). the image is cut into horizontal strips of a few rows each and the workers pull strips off a shared queue, so a fast core just takes more strips. the main thread paints each strip as it lands, a quick low-res pass runs first so you see something instantly, and while you're moving it shows the last finished frame stretched to the new view so nothing ever tears. the little progress bar at the top of the image is the strips arriving. add <code>?cpu</code> to the url to force this mode and see the difference.</p>
+    <p>if webgl2 isn't available (or the gpu bails out mid-session) the page falls back to plain javascript spread across <b>web workers</b>, one per cpu core, running the same math in doubles (the plain loop when shallow, perturbation once you are deep). the image is cut into horizontal strips of a few rows each and the workers pull strips off a shared queue, so a fast core just takes more strips. the main thread paints each strip as it lands, a quick low-res pass runs first so you see something instantly, and while you're moving it shows the last finished frame stretched to the new view so nothing ever tears. the little progress bar at the top of the image is the strips arriving. the <b>render</b> switch in the toolbar flips between the two live, so you can feel the difference yourself.</p>
 
     <h3>the julia set in the corner</h3>
     <p>the mandelbrot set asks "starting at z=0, does this c escape?" a <b>julia set</b> flips it: fix c, and ask for every starting z whether IT escapes. so every point c on the main image has its own julia set, and they're all different. points inside the mandelbrot set give connected julia sets, points outside give dust. hover along the edge and watch them morph, it's the same six lines of code with the roles of z and c swapped, running in its own little worker so it never gets in the way.</p>
@@ -213,7 +214,6 @@ if (|z| &lt; |dz|) { dz = z; n = 0; }   // "rebasing": if the offset got bigger 
     <p>everything on this page is one html file, no libraries, no build, nothing to install. the source is on <a href="https://github.com/xevrion/mandelbrot-forever">github</a>.</p>
   </div>
 </main>
-<footer>made with one formula and too much coffee. z = z<sup>2</sup> + c.</footer>
 
 <script id="worker-src" type="text/plain">
 // this runs inside each web worker. it computes strips of the main image for the cpu
@@ -375,7 +375,6 @@ function colorAt(v,density,d,o){
 let gpu=null;
 const orbit64=new Float64Array((MAXIT+1)*2), orbit32=new Float32Array(Math.ceil((MAXIT+1)*2/4096)*4096);
 function initGPU(){
-  if(FORCE_CPU) return null;
   let gl; try{ gl=canvas.getContext("webgl2",{antialias:false,alpha:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:"high-performance"}); }catch(e){ gl=null; }
   if(!gl) return null;
   const VS=`#version 300 es
@@ -464,7 +463,7 @@ function initGPU(){
     if(f.length>=4){ const avg=f.reduce((a,b)=>a+b,0)/f.length;
       if(avg>26&&g.mscale>0.25){ g.mscale=Math.max(0.25,g.mscale/1.5); f.length=0; }
       else if(avg<11&&g.mscale<1){ g.mscale=Math.min(1,g.mscale*1.5); f.length=0; } } };
-  canvas.addEventListener("webglcontextlost",e=>{ e.preventDefault(); switchToCPU(); },{once:true});
+  const mine=canvas; mine.addEventListener("webglcontextlost",e=>{ e.preventDefault(); if(mine===canvas&&gpu&&gpu.gl===gl) switchToCPU(); },{once:true});
   return g;
 }
 
@@ -472,16 +471,25 @@ function initGPU(){
 const cpu={on:false, ctx:null, frame:null, fctx:null, fimg:null, fview:null, tmp:null, lo:null, workers:[], job:null, full:null, jobId:0, t0:0};
 function initCPU(){
   cpu.on=true; cpu.ctx=canvas.getContext("2d"); cpu.ctx.imageSmoothingEnabled=true; cpu.ctx.imageSmoothingQuality="high";
-  cpu.frame=document.createElement("canvas"); cpu.fctx=cpu.frame.getContext("2d");
-  cpu.tmp=document.createElement("canvas"); cpu.lo=document.createElement("canvas");
-  const NW=Math.max(2,Math.min(16,navigator.hardwareConcurrency||4));
-  for(let i=0;i<NW;i++){ const w=new Worker(wurl); w.busy=false; w.onmessage=onStrip; cpu.workers.push(w); }
+  if(!cpu.frame){ cpu.frame=document.createElement("canvas"); cpu.fctx=cpu.frame.getContext("2d"); cpu.tmp=document.createElement("canvas"); cpu.lo=document.createElement("canvas"); }
+  cpu.fview=null; cpu.full=null; cpu.job=null;
+  if(!cpu.workers.length){ const NW=Math.max(2,Math.min(16,navigator.hardwareConcurrency||4));
+    for(let i=0;i<NW;i++){ const w=new Worker(wurl); w.busy=false; w.onmessage=onStrip; cpu.workers.push(w); } }
+  for(const w of cpu.workers) w.busy=false;
 }
-function switchToCPU(){ // the webgl context died: swap in a fresh canvas and carry on in software
-  if(cpu.on) return; gpu=null;
+function switchToCPU(){ setEngine("cpu"); } // the webgl context died: carry on in software
+// swap engines live. a canvas can only ever have one kind of context, so we replace the element.
+function setEngine(mode){
+  if(mode==="gpu"&&gpu) return; if(mode==="cpu"&&cpu.on) return;
+  stopGlide(); if(cpu.job) cpu.job=null; $("#prog").classList.remove("on");
+  if(gpu){ try{ gpu.gl.getExtension("WEBGL_lose_context")?.loseContext(); }catch(e){} gpu=null; }
   const c=document.createElement("canvas"); c.id="view"; canvas.replaceWith(c); canvas=c;
-  initCPU(); fit(); requestDraw(); settle();
+  cpu.on=false;
+  if(mode==="gpu"){ gpu=initGPU(); if(!gpu) mode="cpu"; }
+  if(mode==="cpu") initCPU();
+  fit(); buildLUT(); requestDraw(); settle(); syncEngineUI(); updateHud();
 }
+function syncEngineUI(){ $("#engGpu").classList.toggle("on",!!gpu); $("#engCpu").classList.toggle("on",!gpu); }
 function makeJob(scale){
   const w=Math.max(1,Math.round(W*scale)), h=Math.max(1,Math.round(H*scale)), hp=width*H/W;
   const j={id:++cpu.jobId, scale, w, h, dx:width/w, dy:hp/h, maxIter, view:{cx,cy,width},
@@ -548,7 +556,7 @@ function fit(){
   const r=stage.getBoundingClientRect(), dpr=Math.min(devicePixelRatio||1,2);
   W=Math.max(1,Math.floor(r.width*dpr)); H=Math.max(1,Math.floor(Math.min(r.width*0.62,640)*dpr));
   canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
-  if(cpu.on){ cpu.frame.width=W; cpu.frame.height=H; cpu.tmp.width=W; cpu.tmp.height=H; cpu.fimg=new ImageData(W,H); cpu.fview=null; cpu.full=null; cpu.job=null; }
+  if(cpu.on){ cpu.frame.width=W; cpu.frame.height=H; cpu.tmp.width=W; cpu.tmp.height=H; cpu.fimg=new ImageData(W,H); cpu.fview=null; cpu.full=null; cpu.job=null; $("#prog").classList.remove("on"); }
 }
 function requestDraw(){ needsDraw=true; }
 let lastFrameAt=0;
@@ -760,7 +768,11 @@ let rz=null; window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTime
 const hadHash=fromHash();
 $("#phase").value=phase; $("#phasev").textContent=phase; sliderFill($("#phase"));
 document.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("on",s.title===palette));
-gpu=initGPU(); if(!gpu) initCPU();
+gpu=FORCE_CPU?null:initGPU(); if(!gpu) initCPU();
+// can this browser do webgl2 at all? if not, grey out the gpu button
+const canGL=!!(gpu||(()=>{ try{ return document.createElement("canvas").getContext("webgl2"); }catch(e){ return null; } })());
+if(!canGL){ $("#engGpu").disabled=true; $("#engGpu").title="webgl2 is not available in this browser"; }
+$("#engGpu").onclick=()=>setEngine("gpu"); $("#engCpu").onclick=()=>setEngine("cpu"); syncEngineUI();
 buildLUT(); fit(); syncIterUI(); settle(); requestAnimationFrame(loop);
 if(!hadHash) setTimeout(()=>{ $("#hint").classList.add("on"); setTimeout(hideHint,6000); },900);
 </script>
