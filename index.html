@@ -6,140 +6,111 @@
 <title>mandelbrot forever</title>
 <meta name="description" content="an infinitely detailed shape from one line of math. zoom in forever.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* direction: deep space observatory. the fractal is the only light source.
-     everything else is near-black glass, one violet-to-magenta accent, a wide
-     geometric display face for the title, and controls that feel like an
-     instrument panel you would find in a dark room. */
+  /* direction: a dark instrument. the fractal is the only thing that gets
+     color. everything else is near-black, neutral gray text, one accent used
+     maybe three times on the whole page. no gradients on chrome, no glass, no
+     glow, no entrance animation. restraint is the design. */
   :root{
-    --void:#05050a;--ink:#0b0b14;--glass:rgba(255,255,255,.035);--glass2:rgba(255,255,255,.06);
-    --edge:rgba(255,255,255,.08);--edge2:rgba(255,255,255,.16);
-    --text:#e6e6f0;--dim:#9a9ab0;--muted:#5c5c74;
-    --a1:#a78bfa;--a2:#f472b6;--a3:#fb923c;--glow:rgba(167,139,250,.35);
+    --bg:#0c0c0f;--surface:#141418;--surface2:#1b1b21;--line:#26262e;
+    --text:#ececf1;--dim:#9c9cab;--muted:#5f5f6e;--accent:#8b7cf6;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
     --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-    --display:"Space Grotesk","Inter",system-ui,sans-serif;
   }
   *{box-sizing:border-box}
-  html{scrollbar-width:thin;scrollbar-color:var(--edge2) transparent;scroll-behavior:smooth}
+  html{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
   ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:var(--edge2);border-radius:99px}
-  ::selection{background:var(--a1);color:#000}
-  body{margin:0;background:var(--void);color:var(--text);font-family:var(--display);font-size:15px;line-height:1.6;
-    background-image:
-      radial-gradient(1200px 600px at 20% -10%,rgba(167,139,250,.10),transparent 60%),
-      radial-gradient(900px 500px at 90% 10%,rgba(244,114,182,.07),transparent 60%);
-    background-attachment:fixed}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;
+    -webkit-font-smoothing:antialiased}
 
-  header{padding:64px 24px 28px;max-width:1180px;margin:0 auto;position:relative}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--a1);margin:0 0 14px;opacity:.9}
-  h1{margin:0;font-size:clamp(40px,7vw,78px);font-weight:700;letter-spacing:-.035em;line-height:.95;
-    background:linear-gradient(100deg,#fff 0%,#d9d0ff 35%,var(--a1) 60%,var(--a2) 100%);
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  header p{margin:18px 0 0;color:var(--dim);max-width:62ch;font-size:17px;line-height:1.6}
-  header p b{color:var(--text);font-weight:600}
+  header{padding:40px 24px 20px;max-width:1160px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 10px;letter-spacing:.02em}
+  h1{margin:0;font-size:clamp(28px,4vw,40px);font-weight:600;letter-spacing:-.02em;line-height:1.1}
+  header p{margin:10px 0 0;color:var(--dim);max-width:64ch;font-size:16px}
+  header p b{color:var(--text);font-weight:500}
 
-  main{max-width:1180px;margin:0 auto;padding:0 24px 90px;display:grid;gap:22px}
-  .panel{background:var(--glass);border:1px solid var(--edge);border-radius:18px;padding:24px 26px;
-    backdrop-filter:blur(10px);position:relative;overflow:hidden}
-  .panel::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);pointer-events:none}
-  .panel h2{margin:0 0 14px;font-family:var(--mono);font-size:11px;color:var(--a2);text-transform:uppercase;letter-spacing:.28em}
+  main{max-width:1160px;margin:0 auto;padding:0 24px 80px;display:grid;gap:40px}
 
-  /* the viewer is the hero */
-  .stage{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--edge2);background:#000;cursor:crosshair;user-select:none;
-    box-shadow:0 0 0 1px rgba(0,0,0,.6),0 30px 90px rgba(0,0,0,.7),0 0 120px var(--glow)}
+  /* the explorer. this is the whole point of the page. */
+  .stage{position:relative;border-radius:8px;overflow:hidden;background:#000;cursor:crosshair;user-select:none;
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 60px rgba(0,0,0,.55)}
   canvas#view{width:100%;display:block}
-  canvas#julia{position:absolute;right:14px;bottom:14px;width:200px;height:136px;border-radius:10px;border:1px solid var(--edge2);
-    background:#000;opacity:0;transform:translateY(6px);transition:opacity .22s,transform .22s;pointer-events:none;
-    box-shadow:0 12px 32px rgba(0,0,0,.7)}
-  canvas#julia.on{opacity:1;transform:none}
-  .jlabel{position:absolute;right:14px;bottom:156px;font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--a1);background:rgba(5,5,10,.85);border:1px solid var(--edge);padding:4px 9px;border-radius:6px;
-    opacity:0;transition:opacity .22s;pointer-events:none}
+  canvas#julia{position:absolute;right:12px;bottom:12px;width:200px;height:136px;border-radius:6px;
+    background:#000;opacity:0;transition:opacity .18s;pointer-events:none;outline:1px solid rgba(255,255,255,.12)}
+  canvas#julia.on{opacity:1}
+  .jlabel{position:absolute;right:12px;bottom:154px;font-family:var(--mono);font-size:11px;color:var(--dim);
+    background:rgba(12,12,15,.85);padding:3px 8px;border-radius:4px;opacity:0;transition:opacity .18s;pointer-events:none}
   .jlabel.on{opacity:1}
-  .hud{position:absolute;left:14px;top:14px;background:rgba(5,5,10,.72);backdrop-filter:blur(10px);border:1px solid var(--edge2);
-    border-radius:12px;padding:12px 14px;font-family:var(--mono);font-size:11.5px;color:var(--dim);pointer-events:none;line-height:1.75;min-width:250px}
+  .hud{position:absolute;left:12px;top:12px;background:rgba(12,12,15,.82);border-radius:6px;padding:10px 12px;
+    font-family:var(--mono);font-size:12px;color:var(--dim);pointer-events:none;line-height:1.7;min-width:236px}
   .hud b{color:var(--text);font-weight:500}
-  .hud .zoom{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:6px;
-    background:linear-gradient(90deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .prog{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,var(--a1),var(--a2),var(--a3));width:0%;
-    transition:width .08s;opacity:0;box-shadow:0 0 12px var(--a1)}
+  .hud .zoom{font-size:20px;font-weight:600;color:var(--text);line-height:1.1;margin-bottom:4px;letter-spacing:-.01em}
+  .prog{position:absolute;left:0;top:0;height:2px;background:var(--accent);width:0%;transition:width .08s;opacity:0}
   .prog.on{opacity:1}
 
-  /* instrument panel */
-  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px}
-  .group{display:flex;gap:8px;align-items:center;background:var(--glass2);border:1px solid var(--edge);border-radius:12px;padding:6px 10px}
-  .group span{font-family:var(--mono);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.2em;margin-right:2px}
-  button{background:var(--glass2);color:var(--text);border:1px solid var(--edge2);padding:9px 15px;border-radius:10px;
-    font-family:var(--display);font-weight:500;cursor:pointer;font-size:13.5px;
-    transition:background .15s,border-color .15s,transform .08s,box-shadow .15s}
-  button:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28)}
-  button:active{transform:translateY(1px) scale(.99)}
-  button.primary{background:linear-gradient(135deg,var(--a1),var(--a2));color:#0b0b14;border-color:transparent;font-weight:700;
-    box-shadow:0 8px 24px var(--glow)}
-  button.primary:hover{filter:brightness(1.08);box-shadow:0 10px 30px var(--glow)}
-  select{background:var(--ink);color:var(--text);border:1px solid var(--edge2);border-radius:9px;padding:7px 10px;font-family:var(--display);font-size:13.5px;
-    appearance:none;-webkit-appearance:none;padding-right:26px;cursor:pointer;
-    background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
-    background-position:calc(100% - 14px) 55%,calc(100% - 9px) 55%;background-size:5px 5px;background-repeat:no-repeat}
-  select:focus{outline:none;border-color:var(--a1)}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:120px;height:4px;border-radius:99px;background:var(--edge2);outline:none;cursor:pointer}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;
-    box-shadow:0 0 0 3px var(--ink),0 0 12px var(--a1);transition:transform .1s}
-  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
-  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:none;box-shadow:0 0 0 3px var(--ink),0 0 12px var(--a1)}
-  .val{font-family:var(--mono);color:var(--a1);font-size:12px;min-width:38px;text-align:right}
-  .spots{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-  .spots button{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;padding:7px 13px;background:transparent;border-color:var(--edge)}
-  .spots button:hover{border-color:var(--a1);color:var(--a1);background:rgba(167,139,250,.08);box-shadow:0 0 18px rgba(167,139,250,.15)}
-  .keys{color:var(--muted);font-family:var(--mono);font-size:11px;margin-top:14px;display:flex;flex-wrap:wrap;gap:16px}
-  .keys kbd{background:var(--ink);border:1px solid var(--edge2);border-bottom-width:2px;border-radius:5px;padding:1px 7px;font-size:10.5px;color:var(--text);font-family:var(--mono)}
+  /* controls: one row, plain, aligned. buttons are solid surfaces, one accent. */
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+  .group{display:flex;gap:8px;align-items:center;padding:0 4px 0 10px;height:36px;background:var(--surface);border-radius:6px}
+  .group span{font-family:var(--mono);color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .group button{height:28px;padding:0 10px;background:var(--surface2)}
+  button{background:var(--surface);color:var(--text);border:0;height:36px;padding:0 14px;border-radius:6px;
+    font-family:var(--sans);font-weight:500;cursor:pointer;font-size:13.5px;transition:background .12s}
+  button:hover{background:var(--surface2)}
+  button:active{background:var(--line)}
+  button.primary{background:var(--accent);color:#0c0c0f;font-weight:600}
+  button.primary:hover{background:#9d90f8}
+  select{background:var(--surface2);color:var(--text);border:0;border-radius:5px;height:28px;padding:0 26px 0 10px;
+    font-family:var(--sans);font-size:13.5px;appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239c9cab' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 9px center}
+  select:focus{outline:1px solid var(--accent);outline-offset:1px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:120px;height:3px;border-radius:99px;background:var(--line);cursor:pointer;margin:0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--text);border:0}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--text);border:0}
+  input[type=range]:focus{outline:none}
+  .val{font-family:var(--mono);color:var(--text);font-size:12px;min-width:38px;text-align:right;padding-right:6px}
+  .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .spots button{height:30px;padding:0 11px;font-family:var(--mono);font-size:12px;font-weight:400;background:transparent;color:var(--dim);
+    box-shadow:0 0 0 1px var(--line) inset}
+  .spots button:hover{color:var(--text);background:var(--surface)}
+  .keys{color:var(--muted);font-family:var(--mono);font-size:11.5px;margin-top:12px;display:flex;flex-wrap:wrap;gap:14px}
+  .keys kbd{font-family:var(--mono);color:var(--dim);background:var(--surface);border-radius:4px;padding:1px 6px;font-size:11px}
 
-  /* prose */
-  .why{color:var(--dim);font-size:14px;margin-top:18px;line-height:1.75;border-top:1px solid var(--edge);padding-top:16px}
-  .why b{color:var(--text);font-weight:600}
-  .explain{color:var(--dim);line-height:1.8;font-size:15px}
-  .explain h3{color:var(--text);font-size:20px;font-weight:600;letter-spacing:-.01em;margin:26px 0 10px}
+  /* everything below the explorer is secondary. plain text, no boxes. */
+  .panel{padding:0}
+  .panel h2{margin:0 0 6px;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .why{color:var(--dim);font-size:14.5px;margin-top:18px;line-height:1.7;max-width:80ch}
+  .why b{color:var(--text);font-weight:500}
+  .explain{color:var(--dim);line-height:1.75;font-size:15px;max-width:80ch}
+  .explain h3{color:var(--text);font-size:17px;font-weight:600;letter-spacing:-.01em;margin:26px 0 8px}
   .explain h3:first-child{margin-top:0}
-  .explain h3::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:12px;vertical-align:middle;
-    background:linear-gradient(135deg,var(--a1),var(--a2));box-shadow:0 0 10px var(--a1)}
-  .explain p{margin:0 0 12px}
-  .explain b{color:var(--text);font-weight:600}
-  .explain pre{background:var(--ink);border:1px solid var(--edge);border-radius:12px;padding:16px 18px;overflow-x:auto;
-    font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#c4b5fd;margin:8px 0 16px}
-  .explain code{font-family:var(--mono);color:var(--a3);background:rgba(251,146,60,.08);padding:1px 6px;border-radius:5px;font-size:.92em}
-  .explain a{color:var(--a1);text-decoration:none;border-bottom:1px solid rgba(167,139,250,.35);transition:border-color .15s}
-  .explain a:hover{border-bottom-color:var(--a1)}
+  .explain p{margin:0 0 10px}
+  .explain b{color:var(--text);font-weight:500}
+  .explain pre{background:var(--surface);border-radius:6px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);
+    font-size:12.5px;line-height:1.55;color:var(--text);margin:8px 0 14px}
+  .explain code{font-family:var(--mono);color:var(--text);background:var(--surface);padding:1px 5px;border-radius:4px;font-size:.92em}
+  .explain a{color:var(--accent);text-decoration:none}
+  .explain a:hover{text-decoration:underline}
   .explain sup{font-size:10px}
+  hr.sep{border:0;height:1px;background:var(--line);margin:0}
 
-  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-  header,.panel{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
-  .panel:nth-of-type(2){animation-delay:.08s}.panel:nth-of-type(3){animation-delay:.16s}
-  @media(prefers-reduced-motion:reduce){header,.panel{animation:none}}
   @media(max-width:700px){
-    header{padding:40px 18px 20px}main{padding:0 14px 60px;gap:14px}.panel{padding:18px 16px;border-radius:14px}
-    canvas#julia,.jlabel{display:none}.hud{min-width:0;font-size:10.5px;padding:9px 11px}.hud .zoom{font-size:18px}
-    .toolbar{gap:8px}.group{padding:5px 8px}input[type=range]{width:90px}
+    header{padding:28px 16px 14px}main{padding:0 12px 60px;gap:28px}
+    canvas#julia,.jlabel{display:none}.hud{min-width:0;font-size:11px;padding:8px 10px}.hud .zoom{font-size:16px}
+    input[type=range]{width:88px}.group{padding-left:8px}
   }
 </style>
 </head>
 <body>
 <header>
-  <p class="eyebrow">z = z&sup2; + c &middot; an interactive fractal</p>
+  <p class="eyebrow">z = z&sup2; + c</p>
   <h1>mandelbrot forever</h1>
   <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. all of it comes from one line of math, repeated.</p>
 </header>
 <main>
-  <div class="panel explain">
-    <h3>wait, what is this</h3>
-    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
-    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds of times.</p>
-    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom. drag to pan. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
-  </div>
-
   <div class="panel">
-    <h2>explore</h2>
     <div class="stage" id="stage">
       <canvas id="view"></canvas>
       <div class="prog" id="prog"></div>
@@ -173,6 +144,15 @@
     <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (left-right is the real part, up-down is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast: bright fast-escapers are far from the set, dark slow-escapers hug the edge. the <b>detail</b> slider is the max iterations before we give up and call a point black, and deep zooms need more of it cuz points near the edge take longer to decide. <b>shift</b> rotates the colors through the palette live. the corner window is the julia set for wherever your mouse is, and every point in the complex plane has its own, so you're seeing an infinite family of fractals by just moving your hand. the hud shows zoom: 1x is the whole shape, and you can go past a trillion x before the numbers run out of precision.</div>
   </div>
 
+  <hr class="sep">
+  <div class="panel explain">
+    <h3>wait, what is this</h3>
+    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
+    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds of times.</p>
+    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom. drag to pan. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
+  </div>
+
+  <hr class="sep">
   <div class="panel explain">
     <h3>how it's actually built (the whole thing is tiny)</h3>
     <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count the steps until it escapes:</p>
