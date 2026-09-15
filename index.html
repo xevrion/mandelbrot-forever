@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mandelbrot forever</title>
+<style>
+  :root{--bg:#1e1e2e;--panel:#181825;--line:#313244;--text:#cdd6f4;--dim:#a6adc8;--muted:#6c7086;
+    --mauve:#cba6f7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387;--teal:#94e2d5;--pink:#f5c2e7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:14px;line-height:1.5}
+  header{padding:18px 20px 6px;max-width:1100px;margin:0 auto}
+  h1{margin:0;font-size:20px;color:var(--mauve)}
+  header p{margin:6px 0 0;color:var(--dim);max-width:75ch}
+  main{max-width:1100px;margin:0 auto;padding:12px 20px 60px;display:grid;gap:16px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .panel h2{margin:0 0 8px;font-size:13px;color:var(--peach);text-transform:uppercase;letter-spacing:1px}
+  .stage{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;cursor:crosshair;user-select:none}
+  canvas#view{width:100%;display:block}
+  .hud{position:absolute;left:10px;top:10px;background:rgba(17,17,27,.78);border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;font-size:12px;color:var(--dim);pointer-events:none;line-height:1.6}
+  .hud b{color:var(--teal)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+  button{background:var(--line);color:var(--text);border:1px solid #45475a;padding:7px 12px;border-radius:8px;
+    font-family:inherit;cursor:pointer;font-size:13px}
+  button:hover{background:#45475a}
+  button.primary{background:var(--mauve);color:#11111b;border-color:var(--mauve);font-weight:700}
+  select,input[type=range]{font-family:inherit}
+  select{background:var(--bg);color:var(--text);border:1px solid #45475a;border-radius:8px;padding:6px 8px}
+  label{color:var(--dim);font-size:12px;display:flex;align-items:center;gap:6px}
+  .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .spots button{font-size:12px;padding:5px 10px}
+  .hint{color:var(--muted);font-size:12px;margin-top:8px}
+  .why{color:var(--dim);font-size:13px;margin-top:10px;line-height:1.65;border-top:1px dashed var(--line);padding-top:10px}
+  .why b{color:var(--text)}
+  .explain{color:var(--dim);line-height:1.7}
+  .explain h3{color:var(--teal);font-size:14px;margin:18px 0 6px}
+  .explain h3:first-child{margin-top:0}
+  .explain p{margin:0 0 10px}
+  .explain b{color:var(--text)}
+  .explain pre{background:#11111b;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.5;color:var(--green)}
+  .explain a{color:var(--blue)}
+  .explain sup{font-size:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>mandelbrot forever</h1>
+  <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. it comes from one line of math repeated over and over.</p>
+</header>
+<main>
+  <div class="panel explain">
+    <h3>wait, what is this</h3>
+    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black blob in the middle is the set itself, and the colors around it are how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. it's genuinely infinite detail from a formula you could write on a napkin.</p>
+    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. you pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every pixel on screen is that one calculation, done thousands of times.</p>
+    <p><b>how to explore:</b> click anywhere to zoom in on that spot. scroll to zoom in and out. drag to pan. try the bookmarked spots below for the famous ones. the url updates as you move, so copy it to share any place you find.</p>
+  </div>
+
+  <div class="panel">
+    <h2>explore</h2>
+    <div class="stage" id="stage">
+      <canvas id="view"></canvas>
+      <div class="hud" id="hud"></div>
+    </div>
+    <div class="toolbar">
+      <button class="primary" id="reset">reset view</button>
+      <button id="zoomIn">zoom in</button>
+      <button id="zoomOut">zoom out</button>
+      <label>palette
+        <select id="palette">
+          <option value="fire">fire</option>
+          <option value="ocean">ocean</option>
+          <option value="candy">candy</option>
+          <option value="electric">electric</option>
+          <option value="mono">mono</option>
+        </select>
+      </label>
+      <label>detail <input id="iter" type="range" min="100" max="3000" step="50" value="400"> <span id="iterv">400</span></label>
+      <button id="save">save png</button>
+    </div>
+    <div class="spots" id="spots"></div>
+    <div class="hint">click = zoom in there. scroll = zoom. drag = pan. bump detail up when deep zooms look blurry or blocky.</div>
+    <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (x is the real part, y is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast. bright fast-escapers are far from the set, dark slow-escapers are hugging the edge. the "detail" slider is the maximum number of iterations we try before giving up and calling a point black. deep zooms need more, cuz points near the edge take longer to decide. the hud shows your zoom level: 1x is the whole shape, and you can go past a trillion x before the numbers run out of precision.</div>
+  </div>
+
+  <div class="panel explain">
+    <h3>how it's actually built (the whole thing is tiny)</h3>
+    <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count how many steps until it escapes:</p>
+<pre>function escape(cx, cy, maxIter){
+  let x=0, y=0, i=0;
+  while(x*x + y*y &lt;= 4 &amp;&amp; i &lt; maxIter){
+    const xt = x*x - y*y + cx;   // real part of z^2 + c
+    y = 2*x*y + cy;              // imaginary part of z^2 + c
+    x = xt; i++;
+  }
+  return i;
+}</pre>
+    <p>that's z = z<sup>2</sup> + c written out with real and imaginary parts, cuz javascript has no complex numbers. the "escape" test is <code>x*x + y*y &lt;= 4</code>, meaning once z gets further than 2 from the origin it's mathematically guaranteed to fly off to infinity, so we can stop early. that one fact is why the whole thing is fast enough to run in a browser.</p>
+
+    <h3>why the colors are smooth and not banded</h3>
+    <p>if you just color by the integer iteration count you get ugly hard stripes. the fix is a little trick called <b>smooth coloring</b>: after the point escapes, look at how far past 2 it got, and use that to add a fraction to the count. so instead of "escaped at step 37" you get "escaped at step 37.62". that fractional part is what makes the gradients silky:</p>
+<pre>// after the loop, if it escaped:
+const log_zn = Math.log(x*x + y*y) / 2;
+const nu = Math.log(log_zn / Math.LN2) / Math.LN2;
+const smooth = i + 1 - nu;   // fractional iteration count</pre>
+
+    <h3>why zooming feels instant</h3>
+    <p>the canvas renders in two passes. first a fast low-res version (every 4th pixel, then filled in as blocks) so you see something immediately, then a full-res pass on top. it also renders in horizontal strips using <code>requestAnimationFrame</code> so the browser never freezes, even at 3000 iterations. no web workers, no gpu, just being a little clever about the order.</p>
+
+    <h3>why it eventually breaks</h3>
+    <p>javascript numbers are 64-bit floats with about 16 digits of precision. zoom past roughly 10<sup>13</sup>x and the pixels stop being distinguishable, so you see blocks. that's not the fractal ending, it's the number type running out. real deep-zoom software uses arbitrary precision math to go to 10<sup>100</sup>x and beyond. that's on the try-later list.</p>
+    <p>everything on this page is one html file, no libraries, no build, nothing to install. the source is on <a href="https://github.com/xevrion/mandelbrot-forever">github</a>, and notes.md in the repo has the bugs i hit and the numbers i measured.</p>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const canvas=$("#view"), ctx=canvas.getContext("2d");
+const stage=$("#stage");
+
+// view state: center in the complex plane + how wide the view is (in complex units)
+let cx=-0.75, cy=0, width=3.2, maxIter=400, palette="fire";
+let W=0,H=0, img=null, renderJob=0;
+
+// ---------- the core: does this point escape, and how fast? ----------
+function escape(cr, ci, max){
+  let x=0,y=0,i=0;
+  while(x*x+y*y<=4 && i<max){
+    const xt=x*x-y*y+cr;
+    y=2*x*y+ci;
+    x=xt; i++;
+  }
+  if(i===max) return -1;                     // never escaped: in the set
+  // smooth coloring: turn the integer count into a fractional one
+  const log_zn=Math.log(x*x+y*y)/2;
+  const nu=Math.log(log_zn/Math.LN2)/Math.LN2;
+  return i+1-nu;
+}
+
+// ---------- palettes: map a 0..1 value to rgb ----------
+function lerp(a,b,t){return a+(b-a)*t}
+function grad(stops,t){
+  t=((t%1)+1)%1;
+  const n=stops.length-1, p=t*n, k=Math.min(n-1,Math.floor(p)), f=p-k;
+  const A=stops[k],B=stops[k+1];
+  return [lerp(A[0],B[0],f),lerp(A[1],B[1],f),lerp(A[2],B[2],f)];
+}
+const PALETTES={
+  fire:    [[0,0,20],[60,0,80],[200,40,0],[255,160,0],[255,255,200],[0,0,20]],
+  ocean:   [[5,10,40],[0,60,120],[0,180,200],[180,240,255],[255,255,255],[5,10,40]],
+  candy:   [[40,0,60],[203,166,247],[245,194,231],[250,179,135],[249,226,175],[40,0,60]],
+  electric:[[0,0,0],[0,40,255],[0,255,255],[255,255,0],[255,0,120],[0,0,0]],
+  mono:    [[0,0,0],[80,80,90],[200,200,210],[255,255,255],[120,120,130],[0,0,0]],
+};
+function color(v){
+  if(v<0) return [0,0,0];
+  // log spacing so bands near the edge and far away both get color range
+  const t=Math.log(1+v)*0.18;
+  return grad(PALETTES[palette],t);
+}
+
+// ---------- rendering, progressive so it never freezes ----------
+function fit(){
+  const r=stage.getBoundingClientRect();
+  const dpr=Math.min(devicePixelRatio||1,2);
+  W=Math.floor(r.width*dpr); H=Math.floor(Math.min(r.width*0.66,620)*dpr);
+  canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
+  img=ctx.createImageData(W,H);
+}
+function pixelToPlane(px,py){
+  const h=width*H/W;
+  return [cx-width/2+px/W*width, cy-h/2+py/H*h];
+}
+function render(){
+  const job=++renderJob;
+  const t0=performance.now();
+  const h=width*H/W, x0=cx-width/2, y0=cy-h/2, dx=width/W, dy=h/H;
+  const data=img.data;
+  // pass 1: coarse blocks so something shows instantly
+  const step=4;
+  for(let py=0;py<H;py+=step){
+    for(let px=0;px<W;px+=step){
+      const v=escape(x0+px*dx,y0+py*dy,Math.min(maxIter,150));
+      const [r,g,b]=color(v);
+      for(let yy=py;yy<Math.min(H,py+step);yy++){
+        for(let xx=px;xx<Math.min(W,px+step);xx++){
+          const o=(yy*W+xx)*4; data[o]=r;data[o+1]=g;data[o+2]=b;data[o+3]=255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(img,0,0);
+  // pass 2: full res, in strips, yielding to the browser between them
+  let row=0; const STRIP=24;
+  function strip(){
+    if(job!==renderJob) return;                 // a newer render started, abandon
+    const end=Math.min(H,row+STRIP);
+    for(let py=row;py<end;py++){
+      const ci=y0+py*dy;
+      for(let px=0;px<W;px++){
+        const v=escape(x0+px*dx,ci,maxIter);
+        const [r,g,b]=color(v);
+        const o=(py*W+px)*4; data[o]=r;data[o+1]=g;data[o+2]=b;data[o+3]=255;
+      }
+    }
+    ctx.putImageData(img,0,row,0,row,W,end-row);
+    row=end;
+    if(row<H) requestAnimationFrame(strip);
+    else { updateHud(performance.now()-t0); }
+  }
+  requestAnimationFrame(strip);
+  updateHud(null);
+}
+function updateHud(ms){
+  const zoom=3.2/width;
+  const z=zoom>=1e6?zoom.toExponential(2):zoom.toFixed(zoom<10?2:0);
+  $("#hud").innerHTML=`zoom <b>${z}x</b><br>center <b>${cx.toPrecision(10)}</b>, <b>${cy.toPrecision(10)}i</b><br>iterations <b>${maxIter}</b>${ms!==null?`<br>rendered in <b>${ms.toFixed(0)} ms</b>`:"<br>rendering..."}`;
+  history.replaceState(null,"",`#${cx},${cy},${width},${maxIter},${palette}`);
+}
+
+// ---------- navigation ----------
+function zoomAt(px,py,factor){
+  const [mx,my]=pixelToPlane(px,py);
+  width/=factor;
+  // keep the point under the cursor fixed
+  const h=width*H/W;
+  cx=mx-(px/W-0.5)*width; cy=my-(py/H-0.5)*h;
+  render();
+}
+let drag=null;
+stage.addEventListener("mousedown",e=>{drag={x:e.clientX,y:e.clientY,cx,cy,moved:false};});
+window.addEventListener("mousemove",e=>{
+  if(!drag) return;
+  const r=canvas.getBoundingClientRect(), dpr=W/r.width;
+  const ddx=(e.clientX-drag.x)*dpr, ddy=(e.clientY-drag.y)*dpr;
+  if(Math.abs(ddx)+Math.abs(ddy)>4) drag.moved=true;
+  if(drag.moved){ cx=drag.cx-ddx*(width/W); cy=drag.cy-ddy*(width/W); render(); }
+});
+window.addEventListener("mouseup",e=>{
+  if(!drag) return;
+  if(!drag.moved){
+    const r=canvas.getBoundingClientRect(), dpr=W/r.width;
+    zoomAt((e.clientX-r.left)*dpr,(e.clientY-r.top)*dpr,2.5);
+  }
+  drag=null;
+});
+stage.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect(), dpr=W/r.width;
+  zoomAt((e.clientX-r.left)*dpr,(e.clientY-r.top)*dpr,e.deltaY<0?1.4:1/1.4);
+},{passive:false});
+// touch: tap to zoom, one finger drag to pan
+let touch=null;
+stage.addEventListener("touchstart",e=>{const t=e.touches[0];touch={x:t.clientX,y:t.clientY,cx,cy,moved:false};},{passive:true});
+stage.addEventListener("touchmove",e=>{
+  if(!touch) return; const t=e.touches[0];
+  const r=canvas.getBoundingClientRect(), dpr=W/r.width;
+  const ddx=(t.clientX-touch.x)*dpr, ddy=(t.clientY-touch.y)*dpr;
+  if(Math.abs(ddx)+Math.abs(ddy)>6) touch.moved=true;
+  if(touch.moved){ cx=touch.cx-ddx*(width/W); cy=touch.cy-ddy*(width/W); render(); }
+},{passive:true});
+stage.addEventListener("touchend",e=>{
+  if(touch&&!touch.moved){
+    const r=canvas.getBoundingClientRect(), dpr=W/r.width;
+    zoomAt((touch.x-r.left)*dpr,(touch.y-r.top)*dpr,2.5);
+  }
+  touch=null;
+});
+
+$("#reset").onclick=()=>{cx=-0.75;cy=0;width=3.2;render();};
+$("#zoomIn").onclick=()=>zoomAt(W/2,H/2,2);
+$("#zoomOut").onclick=()=>zoomAt(W/2,H/2,0.5);
+$("#palette").onchange=e=>{palette=e.target.value;render();};
+$("#iter").oninput=e=>{maxIter=+e.target.value;$("#iterv").textContent=maxIter;};
+$("#iter").onchange=()=>render();
+$("#save").onclick=()=>{const a=document.createElement("a");a.download="mandelbrot.png";a.href=canvas.toDataURL();a.click();};
+
+// famous spots worth visiting
+const SPOTS=[
+  ["the whole thing",-0.75,0,3.2,400],
+  ["seahorse valley",-0.7463,0.1102,0.005,800],
+  ["elephant valley",0.2929859127507,0.0136572365,0.003,800],
+  ["spiral",-0.7453,0.1127,0.00065,1200],
+  ["mini mandelbrot",-1.7684,0.0009,0.004,800],
+  ["lightning",-0.1592,-1.0317,0.002,1000],
+  ["deep",-0.743643887037158704752191506114774,0.131825904205311970493132056385139,0.00000004,2000],
+];
+for(const [name,x,y,w,it] of SPOTS){
+  const b=document.createElement("button"); b.textContent=name;
+  b.onclick=()=>{cx=x;cy=y;width=w;maxIter=it;$("#iter").value=it;$("#iterv").textContent=it;render();};
+  $("#spots").appendChild(b);
+}
+
+// restore a shared view from the url hash
+function fromHash(){
+  const h=location.hash.slice(1).split(",");
+  if(h.length>=3&&!isNaN(+h[0])){
+    cx=+h[0];cy=+h[1];width=+h[2];
+    if(h[3]) {maxIter=+h[3];$("#iter").value=maxIter;$("#iterv").textContent=maxIter;}
+    if(h[4]&&PALETTES[h[4]]) {palette=h[4];$("#palette").value=palette;}
+  }
+}
+window.addEventListener("resize",()=>{fit();render();});
+fromHash(); fit(); render();
+</script>
+</body>
+</html>
