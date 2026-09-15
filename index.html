@@ -5,470 +5,764 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mandelbrot forever</title>
 <meta name="description" content="an infinitely detailed shape from one line of math. zoom in forever.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#11111b">
 <style>
-  /* direction: a dark instrument. the fractal is the only thing that gets
-     color. everything else is near-black, neutral gray text, one accent used
-     maybe three times on the whole page. no gradients on chrome, no glass, no
-     glow, no entrance animation. restraint is the design. */
   :root{
-    --bg:#0c0c0f;--surface:#141418;--surface2:#1b1b21;--line:#26262e;
-    --text:#ececf1;--dim:#9c9cab;--muted:#5f5f6e;--accent:#8b7cf6;
-    --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
-    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --bg:#11111b;--panel:#181825;--panel2:#1e1e2e;--line:#313244;--line2:#45475a;
+    --text:#cdd6f4;--dim:#a6adc8;--muted:#7f849c;--faint:#585b70;
+    --mauve:#cba6f7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387;--teal:#94e2d5;--pink:#f5c2e7;--yellow:#f9e2af;--red:#f38ba8;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,"JetBrains Mono","SF Mono","Cascadia Code",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
-  html{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
-  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+  html{scrollbar-width:thin;scrollbar-color:var(--line2) transparent;-webkit-text-size-adjust:100%}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
+  ::selection{background:rgba(203,166,247,.35)}
   body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;
-    -webkit-font-smoothing:antialiased}
+    -webkit-font-smoothing:antialiased;background-image:radial-gradient(1200px 600px at 50% -200px,rgba(203,166,247,.08),transparent 70%)}
+  a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(137,180,250,.35)}
+  a:hover{border-bottom-color:var(--blue)}
+  header{padding:38px 20px 10px;max-width:1120px;margin:0 auto}
+  h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1.15;
+    background:linear-gradient(90deg,var(--mauve),var(--pink) 45%,var(--peach));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
+  header p{margin:8px 0 0;color:var(--dim);max-width:70ch;font-size:15.5px}
+  main{max-width:1120px;margin:0 auto;padding:14px 20px 80px;display:grid;gap:20px}
+  main>*{min-width:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px}
+  .panel h2{margin:0 0 12px;font-size:11.5px;color:var(--peach);text-transform:uppercase;letter-spacing:1.8px;font-weight:600}
 
-  header{padding:40px 24px 20px;max-width:1160px;margin:0 auto}
-  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 10px;letter-spacing:.02em}
-  h1{margin:0;font-size:clamp(28px,4vw,40px);font-weight:600;letter-spacing:-.02em;line-height:1.1}
-  header p{margin:10px 0 0;color:var(--dim);max-width:64ch;font-size:16px}
-  header p b{color:var(--text);font-weight:500}
-
-  main{max-width:1160px;margin:0 auto;padding:0 24px 80px;display:grid;gap:40px}
-
-  /* the explorer. this is the whole point of the page. */
-  .stage{position:relative;border-radius:8px;overflow:hidden;background:#000;cursor:crosshair;user-select:none;
-    box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 60px rgba(0,0,0,.55)}
+  /* the viewer */
+  .stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line2);background:#000;cursor:crosshair;user-select:none;
+    -webkit-user-select:none;touch-action:none;box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4)}
+  .stage.grabbing{cursor:grabbing}
   canvas#view{width:100%;display:block}
-  canvas#julia{position:absolute;right:12px;bottom:12px;width:200px;height:136px;border-radius:6px;
-    background:#000;opacity:0;transition:opacity .18s;pointer-events:none;outline:1px solid rgba(255,255,255,.12)}
-  canvas#julia.on{opacity:1}
-  .jlabel{position:absolute;right:12px;bottom:154px;font-family:var(--mono);font-size:11px;color:var(--dim);
-    background:rgba(12,12,15,.85);padding:3px 8px;border-radius:4px;opacity:0;transition:opacity .18s;pointer-events:none}
+  canvas#julia{position:absolute;right:14px;bottom:14px;width:200px;height:130px;border-radius:10px;border:1px solid rgba(255,255,255,.14);
+    background:#000;opacity:0;transform:translateY(6px);transition:opacity .22s,transform .22s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+  canvas#julia.on{opacity:1;transform:none}
+  .jlabel{position:absolute;right:22px;bottom:118px;font-family:var(--mono);font-size:10.5px;letter-spacing:.4px;color:var(--text);
+    background:rgba(17,17,27,.72);backdrop-filter:blur(6px);padding:2px 7px;border-radius:5px;opacity:0;transition:opacity .22s;pointer-events:none;z-index:2}
   .jlabel.on{opacity:1}
-  .hud{position:absolute;left:12px;top:12px;background:rgba(12,12,15,.82);border-radius:6px;padding:10px 12px;
-    font-family:var(--mono);font-size:12px;color:var(--dim);pointer-events:none;line-height:1.7;min-width:236px}
-  .hud b{color:var(--text);font-weight:500}
-  .hud .zoom{font-size:20px;font-weight:600;color:var(--text);line-height:1.1;margin-bottom:4px;letter-spacing:-.01em}
-  .prog{position:absolute;left:0;top:0;height:2px;background:var(--accent);width:0%;transition:width .08s;opacity:0}
+  .hud{position:absolute;left:14px;top:14px;background:rgba(17,17,27,.74);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 13px 11px;font-family:var(--mono);font-size:11.5px;color:var(--dim);
+    pointer-events:none;line-height:1.75;min-width:238px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .hud .zoom{font-size:19px;color:var(--yellow);font-weight:600;letter-spacing:-.3px;line-height:1.3;margin-bottom:3px}
+  .hud .row{display:flex;justify-content:space-between;gap:14px}
+  .hud .row span:first-child{color:var(--faint)}
+  .hud .row b{color:var(--teal);font-weight:500}
+  .hud .status{margin-top:4px;padding-top:5px;border-top:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:10.5px;display:flex;justify-content:space-between;gap:10px}
+  .hud .status .eng{color:var(--green)}
+  .hud .status .eng.cpu{color:var(--peach)}
+  .prog{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,var(--mauve),var(--pink));width:0%;transition:width .1s,opacity .3s;opacity:0}
   .prog.on{opacity:1}
+  .hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--dim);
+    background:rgba(17,17,27,.72);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);padding:5px 11px;border-radius:99px;
+    pointer-events:none;opacity:0;transition:opacity .5s;white-space:nowrap}
+  .hint.on{opacity:1}
 
-  /* controls: one row, plain, aligned. buttons are solid surfaces, one accent. */
-  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
-  .group{display:flex;gap:8px;align-items:center;padding:0 4px 0 10px;height:36px;background:var(--surface);border-radius:6px}
-  .group span{font-family:var(--mono);color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
-  .group button{height:28px;padding:0 10px;background:var(--surface2)}
-  button{background:var(--surface);color:var(--text);border:0;height:36px;padding:0 14px;border-radius:6px;
-    font-family:var(--sans);font-weight:500;cursor:pointer;font-size:13.5px;transition:background .12s}
-  button:hover{background:var(--surface2)}
-  button:active{background:var(--line)}
-  button.primary{background:var(--accent);color:#0c0c0f;font-weight:600}
-  button.primary:hover{background:#9d90f8}
-  select{background:var(--surface2);color:var(--text);border:0;border-radius:5px;height:28px;padding:0 26px 0 10px;
-    font-family:var(--sans);font-size:13.5px;appearance:none;-webkit-appearance:none;cursor:pointer;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239c9cab' stroke-width='1.5'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 9px center}
-  select:focus{outline:1px solid var(--accent);outline-offset:1px}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:120px;height:3px;border-radius:99px;background:var(--line);cursor:pointer;margin:0}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--text);border:0}
-  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--text);border:0}
-  input[type=range]:focus{outline:none}
-  .val{font-family:var(--mono);color:var(--text);font-size:12px;min-width:38px;text-align:right;padding-right:6px}
-  .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-  .spots button{height:30px;padding:0 11px;font-family:var(--mono);font-size:12px;font-weight:400;background:transparent;color:var(--dim);
-    box-shadow:0 0 0 1px var(--line) inset}
-  .spots button:hover{color:var(--text);background:var(--surface)}
-  .keys{color:var(--muted);font-family:var(--mono);font-size:11.5px;margin-top:12px;display:flex;flex-wrap:wrap;gap:14px}
-  .keys kbd{font-family:var(--mono);color:var(--dim);background:var(--surface);border-radius:4px;padding:1px 6px;font-size:11px}
+  /* controls */
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+  .toolbar .spacer{flex:1}
+  .group{display:flex;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:5px 7px 5px 11px;min-height:42px}
+  .group>span.lbl{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;margin-right:4px;font-weight:600}
+  button{background:var(--line);color:var(--text);border:1px solid transparent;padding:7px 13px;border-radius:9px;font-family:inherit;cursor:pointer;
+    font-size:13px;font-weight:500;line-height:1.3;transition:background .12s,border-color .12s,color .12s,transform .06s,box-shadow .12s}
+  button:hover{background:var(--line2)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--mauve);outline-offset:2px}
+  button.primary{background:var(--mauve);color:#11111b;font-weight:600}
+  button.primary:hover{background:#dbc1fb}
+  button.icon{width:32px;padding:6px 0;text-align:center;font-family:var(--mono);font-size:15px}
+  button.ghost{background:transparent;border-color:var(--line2)}
+  button.ghost:hover{background:var(--line)}
+  button.toggle{background:transparent;border-color:var(--line2);color:var(--muted);font-size:12px;padding:5px 9px;letter-spacing:.3px}
+  button.toggle.on{background:rgba(203,166,247,.16);border-color:rgba(203,166,247,.5);color:var(--mauve)}
+  .swatches{display:flex;gap:6px}
+  .swatch{width:34px;height:24px;border-radius:7px;border:2px solid transparent;padding:0;background-clip:padding-box;position:relative;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+  .swatch:hover{transform:translateY(-1px)}
+  .swatch.on{border-color:var(--text);box-shadow:0 0 0 2px var(--panel2),0 0 14px rgba(203,166,247,.35)}
+  .slider{display:flex;align-items:center;gap:8px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:104px;height:22px;background:transparent;margin:0;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,var(--mauve) var(--p,0%),var(--line2) var(--p,0%))}
+  input[type=range]::-moz-range-track{height:4px;border-radius:99px;background:var(--line2)}
+  input[type=range]::-moz-range-progress{height:4px;border-radius:99px;background:var(--mauve)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--text);border:3px solid var(--panel2);
+    margin-top:-5.5px;box-shadow:0 1px 6px rgba(0,0,0,.5);transition:transform .1s}
+  input[type=range]::-moz-range-thumb{width:9px;height:9px;border-radius:50%;background:var(--text);border:3px solid var(--panel2);box-shadow:0 1px 6px rgba(0,0,0,.5)}
+  input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15)}
+  input[type=range]:focus-visible{outline:2px solid var(--mauve);outline-offset:2px;border-radius:6px}
+  .val{color:var(--teal);font-family:var(--mono);font-size:12px;min-width:38px;text-align:right}
+  .spots{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;align-items:center}
+  .spots .lbl{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;font-weight:600;margin-right:4px}
+  .spots button{font-size:12.5px;padding:6px 13px;background:var(--panel2);border:1px solid var(--line);border-radius:99px;color:var(--dim)}
+  .spots button:hover{border-color:var(--mauve);color:var(--mauve);background:rgba(203,166,247,.08)}
+  .spots button.on{border-color:rgba(203,166,247,.6);color:var(--mauve);background:rgba(203,166,247,.14)}
+  .keys{color:var(--muted);font-size:12px;margin-top:14px;display:flex;flex-wrap:wrap;gap:6px 16px}
+  .keys kbd{background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 6px;font-size:11px;color:var(--text);font-family:var(--mono)}
 
-  /* everything below the explorer is secondary. plain text, no boxes. */
-  .panel{padding:0}
-  .panel h2{margin:0 0 6px;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
-  .why{color:var(--dim);font-size:14.5px;margin-top:18px;line-height:1.7;max-width:80ch}
-  .why b{color:var(--text);font-weight:500}
-  .explain{color:var(--dim);line-height:1.75;font-size:15px;max-width:80ch}
-  .explain h3{color:var(--text);font-size:17px;font-weight:600;letter-spacing:-.01em;margin:26px 0 8px}
+  .why{color:var(--dim);font-size:13.5px;margin-top:16px;line-height:1.7;border-top:1px dashed var(--line);padding-top:14px}
+  .why b{color:var(--text);font-weight:600}
+  .explain{color:var(--dim);line-height:1.75}
+  .explain h3{color:var(--teal);font-size:15px;font-weight:600;margin:22px 0 6px;letter-spacing:-.1px}
   .explain h3:first-child{margin-top:0}
   .explain p{margin:0 0 10px}
-  .explain b{color:var(--text);font-weight:500}
-  .explain pre{background:var(--surface);border-radius:6px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);
-    font-size:12.5px;line-height:1.55;color:var(--text);margin:8px 0 14px}
-  .explain code{font-family:var(--mono);color:var(--text);background:var(--surface);padding:1px 5px;border-radius:4px;font-size:.92em}
-  .explain a{color:var(--accent);text-decoration:none}
-  .explain a:hover{text-decoration:underline}
+  .explain b{color:var(--text);font-weight:600}
+  .explain pre{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:var(--green);margin:6px 0 14px}
+  .explain code{color:var(--peach);font-family:var(--mono);font-size:.92em}
   .explain sup{font-size:10px}
-  hr.sep{border:0;height:1px;background:var(--line);margin:0}
-
-  @media(max-width:700px){
-    header{padding:28px 16px 14px}main{padding:0 12px 60px;gap:28px}
-    canvas#julia,.jlabel{display:none}.hud{min-width:0;font-size:11px;padding:8px 10px}.hud .zoom{font-size:16px}
-    input[type=range]{width:88px}.group{padding-left:8px}
+  footer{max-width:1120px;margin:0 auto;padding:0 20px 40px;color:var(--faint);font-size:12.5px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media(max-width:760px){
+    header{padding:24px 16px 6px} h1{font-size:25px} header p{font-size:14px}
+    main{padding:10px 12px 60px;gap:14px} .panel{padding:16px 15px;border-radius:14px}
+    canvas#julia,.jlabel{display:none}
+    .hud{min-width:0;font-size:10.5px;padding:7px 10px;left:10px;top:10px;line-height:1.6}
+    .hud .zoom{font-size:16px;margin:0} .hud .row{display:none} .hud .row:nth-child(4){display:flex} .hud .row span:first-child{display:none} .hud .status{display:none}
+    .group{padding:4px 6px 4px 9px;min-height:38px;max-width:100%;flex-wrap:wrap} input[type=range]{width:96px}
+    .swatches{flex-wrap:wrap} .swatch{width:28px;height:22px}
+    .toolbar .spacer{display:none}
+    .hint{display:none}
   }
 </style>
 </head>
 <body>
 <header>
-  <p class="eyebrow">z = z&sup2; + c</p>
   <h1>mandelbrot forever</h1>
   <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. all of it comes from one line of math, repeated.</p>
 </header>
 <main>
+  <div class="panel explain">
+    <h3>wait, what is this</h3>
+    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
+    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds or thousands of times.</p>
+    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom, drag to pan, pinch on a phone. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
+  </div>
+
   <div class="panel">
+    <h2>explore</h2>
     <div class="stage" id="stage">
       <canvas id="view"></canvas>
       <div class="prog" id="prog"></div>
-      <div class="hud" id="hud"></div>
+      <div class="hud" id="hud">
+        <div class="zoom" id="hzoom">1.00x</div>
+        <div class="row"><span>re</span><b id="hre"></b></div>
+        <div class="row"><span>im</span><b id="him"></b></div>
+        <div class="row"><span>iterations</span><b id="hit"></b></div>
+        <div class="status"><span class="eng" id="heng"></span><span id="htime"></span></div>
+      </div>
+      <div class="hint" id="hint">click to zoom in, scroll to zoom, drag to pan</div>
       <div class="jlabel" id="jlabel">julia set at cursor</div>
-      <canvas id="julia" width="380" height="260"></canvas>
+      <canvas id="julia" width="400" height="260"></canvas>
     </div>
     <div class="toolbar">
-      <button class="primary" id="reset">reset</button>
-      <div class="group"><span>zoom</span><button id="zoomIn">+</button><button id="zoomOut">-</button></div>
-      <div class="group"><span>palette</span>
-        <select id="palette">
-          <option value="inferno">inferno</option>
-          <option value="ocean">ocean</option>
-          <option value="aurora">aurora</option>
-          <option value="candy">candy</option>
-          <option value="electric">electric</option>
-          <option value="ink">ink</option>
-        </select>
-      </div>
-      <div class="group"><span>shift</span><input id="phase" type="range" min="0" max="100" value="0"><span class="val" id="phasev">0</span></div>
-      <div class="group"><span>detail</span><input id="iter" type="range" min="100" max="5000" step="50" value="500"><span class="val" id="iterv">500</span></div>
-      <button id="save">save png</button>
-      <button id="share">copy link</button>
+      <div class="group" style="padding-left:6px"><button class="primary" id="reset">reset</button><button class="icon ghost" id="zoomOut" title="zoom out">-</button><button class="icon ghost" id="zoomIn" title="zoom in">+</button></div>
+      <div class="group"><span class="lbl">palette</span><div class="swatches" id="palettes"></div></div>
+      <div class="group slider"><span class="lbl">shift</span><input id="phase" type="range" min="0" max="100" value="0"><span class="val" id="phasev">0</span></div>
+      <div class="group slider"><span class="lbl">detail</span><input id="iter" type="range" min="100" max="20000" step="50" value="500"><span class="val" id="iterv">500</span><button class="toggle on" id="auto" title="pick iterations from the zoom level">auto</button></div>
+      <div class="spacer"></div>
+      <button class="ghost" id="save">save png</button>
+      <button class="ghost" id="share">copy link</button>
     </div>
-    <div class="spots" id="spots"></div>
+    <div class="spots" id="spots"><span class="lbl">places</span></div>
     <div class="keys">
       <span><kbd>click</kbd> glide in</span><span><kbd>scroll</kbd> zoom</span><span><kbd>drag</kbd> pan</span>
       <span><kbd>+</kbd> <kbd>-</kbd> zoom</span><span><kbd>arrows</kbd> pan</span><span><kbd>r</kbd> reset</span><span><kbd>j</kbd> toggle julia</span>
     </div>
-    <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (left-right is the real part, up-down is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast: bright fast-escapers are far from the set, dark slow-escapers hug the edge. the <b>detail</b> slider is the max iterations before we give up and call a point black, and deep zooms need more of it cuz points near the edge take longer to decide. <b>shift</b> rotates the colors through the palette live. the corner window is the julia set for wherever your mouse is, and every point in the complex plane has its own, so you're seeing an infinite family of fractals by just moving your hand. the hud shows zoom: 1x is the whole shape, and you can go past a trillion x before the numbers run out of precision.</div>
+    <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (left-right is the real part, up-down is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast: points far from the set escape in a few steps, points hugging the edge take hundreds. <b>detail</b> is the max iterations before we give up and call a point black. deep zooms need more of it because points near the edge take longer to decide, so by default it rises on its own as you zoom (that's the <b>auto</b> button), and you can drag the slider to override it. <b>shift</b> rotates the colors through the palette live. the corner window is the julia set for wherever your mouse is, and every point in the complex plane has its own, so you're seeing an infinite family of fractals by just moving your hand. the hud shows zoom: 1x is the whole shape, and you can go to about a hundred million million million million x (10<sup>26</sup>) before the numbers run out of precision.</div>
   </div>
 
-  <hr class="sep">
   <div class="panel explain">
-    <h3>wait, what is this</h3>
-    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
-    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds of times.</p>
-    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom. drag to pan. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
-  </div>
-
-  <hr class="sep">
-  <div class="panel explain">
-    <h3>how it's actually built (the whole thing is tiny)</h3>
+    <h3>how it's actually built (the whole thing is one file)</h3>
     <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count the steps until it escapes:</p>
 <pre>function escape(cx, cy, maxIter){
   let x=0, y=0, i=0;
-  while(x*x + y*y &lt;= 4 &amp;&amp; i &lt; maxIter){
+  while(x*x + y*y &lt;= 10000 &amp;&amp; i &lt; maxIter){
     const xt = x*x - y*y + cx;   // real part of z^2 + c
     y = 2*x*y + cy;              // imaginary part of z^2 + c
     x = xt; i++;
   }
   return i;
 }</pre>
-    <p>that's z = z<sup>2</sup> + c written out with real and imaginary parts, cuz javascript has no complex number type. the escape test is <code>x*x + y*y &lt;= 4</code>: once z gets further than 2 from the origin it is mathematically guaranteed to fly off to infinity, so we stop early. that one fact is why the whole thing runs in a browser at all.</p>
+    <p>that's z = z<sup>2</sup> + c written out with real and imaginary parts, because javascript has no complex number type. the escape test is the <code>x*x + y*y</code> check: once z gets further than 2 from the origin it is mathematically guaranteed to fly off to infinity, so we could stop right there. we let it run a bit further (to a radius of 100) because the smooth coloring below gets more accurate the further out you measure.</p>
 
     <h3>why the colors are smooth and not banded</h3>
-    <p>if you color by the raw integer iteration count you get ugly hard stripes. the fix is <b>smooth coloring</b>: after the point escapes, look at how far past 2 it overshot, and use that to add a fraction to the count. so instead of "escaped at step 37" you get "escaped at step 37.62", and that fractional part is what makes the gradients silky:</p>
+    <p>if you color by the raw integer iteration count you get ugly hard stripes. the fix is <b>smooth coloring</b>: after the point escapes, look at how far past the bailout radius it overshot, and use that to add a fraction to the count. so instead of "escaped at step 37" you get "escaped at step 37.62", and that fractional part is what makes the gradients silky:</p>
 <pre>const log_zn = Math.log(x*x + y*y) / 2;
 const nu = Math.log(log_zn / Math.LN2) / Math.LN2;
 const smooth = i + 1 - nu;   // fractional iteration count</pre>
+    <p>that number then picks a color from the palette. the palette is a loop, and the position in the loop comes from a mix of the log and the square root of the smooth count, which spreads the colors out so both the calm outside and the busy edge get a full range instead of one flat tone. the palettes themselves are blended in <b>oklab</b> rather than plain rgb, which is why the transitions don't go muddy or grey in the middle. the gpu samples the palette as a texture with linear filtering, so there is no lookup-table stepping at all.</p>
 
-    <h3>why it doesn't freeze your browser</h3>
-    <p>rendering is split across <b>web workers</b>, one per cpu core. the image is cut into horizontal strips, each worker takes a strip, computes it, and hands back the pixels. the main thread just paints them as they land, so the page stays responsive even at 5000 iterations on a deep zoom. a quick low-res pass runs first so you see something instantly, then the full-res strips fill in over it. the little progress bar at the top of the image is the strips arriving.</p>
+    <h3>how it runs on the gpu</h3>
+    <p>every pixel is independent, which is exactly the kind of work a gpu eats for breakfast, so if your browser has <b>webgl2</b> the whole image is a single fragment shader and a full frame usually takes a few milliseconds. that's why zooming feels like a video instead of a slideshow: every frame of the glide is a real render, not a stretched copy of the last one.</p>
+    <p>the catch is that gpus only do 32-bit floats, which run out of precision at about a hundred thousand times zoom. the trick that gets around it is called <b>perturbation</b>. the cpu computes one full orbit for the point at the center of the screen using 64-bit doubles, and uploads it to the gpu as a texture. each pixel then only tracks its tiny <b>difference</b> from that reference orbit, and the difference stays small enough for 32-bit math to handle:</p>
+<pre>// dz is this pixel's offset from the reference orbit Z, dc its offset from the reference point
+dz = 2*Z[n]*dz + dz*dz + dc;      // same formula, expanded around the reference
+z  = Z[n+1] + dz;                 // the real value is reference plus offset
+if (|z| &lt; |dz|) { dz = z; n = 0; }   // "rebasing": if the offset got bigger than the value, start over</pre>
+    <p>that last line is the whole reason it works on a plain reference orbit with no glitch-fixing passes. when a pixel's orbit drifts away from the reference, it just re-anchors itself to the start of the orbit and carries on. the same idea is what real deep zoom programs use to go to 10<sup>1000</sup>x, they just use arbitrary-precision numbers for the reference.</p>
+    <p>plain 64-bit doubles for the reference point run out at about 10<sup>13</sup>x, and you could feel it: panning would freeze because one pixel of movement was smaller than the gap between two representable numbers. so the center of the view is stored as a <b>double-double</b>, two floats stacked so the second one holds the rounding error of the first. that gives about 32 digits, which is enough for the reference orbit to stay honest out to roughly 10<sup>26</sup>x.</p>
+
+    <h3>and when there is no gpu</h3>
+    <p>if webgl2 isn't available (or the gpu bails out mid-session) the page falls back to plain javascript spread across <b>web workers</b>, one per cpu core, running the same math in doubles (the plain loop when shallow, perturbation once you are deep). the image is cut into horizontal strips of a few rows each and the workers pull strips off a shared queue, so a fast core just takes more strips. the main thread paints each strip as it lands, a quick low-res pass runs first so you see something instantly, and while you're moving it shows the last finished frame stretched to the new view so nothing ever tears. the little progress bar at the top of the image is the strips arriving. add <code>?cpu</code> to the url to force this mode and see the difference.</p>
 
     <h3>the julia set in the corner</h3>
-    <p>the mandelbrot set asks "starting at z=0, does this c escape?" a <b>julia set</b> flips it: fix c, and ask for every starting z whether IT escapes. so every point c on the main image has its own julia set, and they're all different. points inside the mandelbrot set give connected julia sets, points outside give dust. hover along the edge and watch them morph, it's the same six lines of code with the roles of z and c swapped.</p>
+    <p>the mandelbrot set asks "starting at z=0, does this c escape?" a <b>julia set</b> flips it: fix c, and ask for every starting z whether IT escapes. so every point c on the main image has its own julia set, and they're all different. points inside the mandelbrot set give connected julia sets, points outside give dust. hover along the edge and watch them morph, it's the same six lines of code with the roles of z and c swapped, running in its own little worker so it never gets in the way.</p>
 
     <h3>why it eventually breaks</h3>
-    <p>javascript numbers are 64-bit floats with about 16 digits of precision. zoom past roughly 10<sup>13</sup>x and neighbouring pixels stop being distinguishable, so you see blocks. that's not the fractal ending, it's the number type running out. real deep-zoom software uses arbitrary-precision arithmetic and perturbation theory to go to 10<sup>100</sup>x and beyond. that's on the try-later list.</p>
-    <p>everything on this page is one html file, no libraries, no build, nothing to install. the source is on <a href="https://github.com/xevrion/mandelbrot-forever">github</a>, and notes.md in the repo has the bugs i hit and the numbers i measured.</p>
+    <p>the double-double trick buys about 32 digits, so somewhere past 10<sup>26</sup>x neighbouring pixels stop being distinguishable and you see blocks or noise. that's not the fractal ending, it's the number type running out. real deep-zoom software keeps the reference point in arbitrary-precision arithmetic (as many digits as the zoom needs) and goes to 10<sup>100</sup>x and beyond. that's on the try-later list.</p>
+    <p>everything on this page is one html file, no libraries, no build, nothing to install. the source is on <a href="https://github.com/xevrion/mandelbrot-forever">github</a>.</p>
   </div>
 </main>
+<footer>made with one formula and too much coffee. z = z<sup>2</sup> + c.</footer>
 
 <script id="worker-src" type="text/plain">
-// this runs inside each web worker. it only knows how to compute strips.
+// this runs inside each web worker. it computes strips of the main image for the cpu
+// fallback (same perturbation math as the gpu shader, in doubles) and the julia preview.
+const BAIL=1e4;
+let orbit=null, orbitJob=-1, orbitLen=0;
+function perturb(dcr,dci,Z,M,max){
+  let dzr=0,dzi=0,n=0;
+  for(let i=0;i<max;i++){
+    const Zr=Z[2*n],Zi=Z[2*n+1];
+    const nr=2*(Zr*dzr-Zi*dzi)+(dzr*dzr-dzi*dzi)+dcr, ni=2*(Zr*dzi+Zi*dzr)+2*dzr*dzi+dci;
+    dzr=nr; dzi=ni; n++;
+    const zr=Z[2*n]+dzr, zi=Z[2*n+1]+dzi, zz=zr*zr+zi*zi;
+    if(zz>BAIL) return i+2-Math.log2(Math.log(zz)*0.5/Math.LN2);
+    if(n>=M||zz<dzr*dzr+dzi*dzi){ dzr=zr; dzi=zi; n=0; }   // rebase
+  }
+  return -1;
+}
 function escape(cr,ci,max){
-  let x=0,y=0,i=0;
-  while(x*x+y*y<=4&&i<max){const xt=x*x-y*y+cr;y=2*x*y+ci;x=xt;i++;}
-  if(i===max)return -1;
-  const l=Math.log(x*x+y*y)/2;
-  return i+1-Math.log(l/Math.LN2)/Math.LN2;
+  let x=0,y=0,xx=0,yy=0,i=0;
+  while(xx+yy<=BAIL&&i<max){ y=2*x*y+ci; x=xx-yy+cr; xx=x*x; yy=y*y; i++; }
+  if(xx+yy<=BAIL) return -1;
+  return i+1-Math.log2(Math.log(xx+yy)*0.5/Math.LN2);
+}
+function inBulbs(cr,ci){
+  const q=(cr-0.25)*(cr-0.25)+ci*ci;
+  return q*(q+(cr-0.25))<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625;
 }
 onmessage=e=>{
-  const {job,y0,y1,W,x0,cy0,dx,dy,maxIter,step}=e.data;
-  const out=new Float32Array((y1-y0)*W);
+  const m=e.data;
+  if(m.type==="orbit"){ orbit=m.Z; orbitJob=m.job; orbitLen=m.M; return; }
+  if(m.type==="julia"){
+    const {cr,ci,w,h,max}=m, out=new Float32Array(w*h), pw=3.4, ph=pw*h/w;
+    let k=0;
+    for(let py=0;py<h;py++){ const zi0=-ph/2+(py+0.5)/h*ph;
+      for(let px=0;px<w;px++){ let x=-pw/2+(px+0.5)/w*pw, y=zi0, xx=x*x, yy=y*y, i=0;
+        while(xx+yy<=BAIL&&i<max){ y=2*x*y+ci; x=xx-yy+cr; xx=x*x; yy=y*y; i++; }
+        out[k++]= xx+yy<=BAIL ? -1 : i+1-Math.log2(Math.log(xx+yy)*0.5/Math.LN2);
+      } }
+    postMessage({type:"julia",out,w,h},[out.buffer]);
+    return;
+  }
+  const {job,y0,y1,w,h,dx,dy,maxIter,bulbs,c0r,c0i,direct}=m;
+  if(job!==orbitJob){ postMessage({type:"strip",job,y0,y1,out:null}); return; }
+  const out=new Float32Array((y1-y0)*w);
   let k=0;
   for(let py=y0;py<y1;py++){
-    const ci=cy0+py*dy;
-    for(let px=0;px<W;px++){ out[k++]=escape(x0+px*dx,ci,maxIter); }
+    const dci=(py+0.5-h/2)*dy;
+    for(let px=0;px<w;px++){ const dcr=(px+0.5-w/2)*dx;
+      // shallow views are exact in plain doubles and that loop is 3x cheaper; deep ones need the reference orbit
+      out[k++]= (bulbs&&inBulbs(c0r+dcr,c0i+dci)) ? -1 : direct ? escape(c0r+dcr,c0i+dci,maxIter) : perturb(dcr,dci,orbit,orbitLen,maxIter); }
   }
-  postMessage({job,y0,y1,out},[out.buffer]);
+  postMessage({type:"strip",job,y0,y1,out},[out.buffer]);
 };
 </script>
 <script>
 const $=s=>document.querySelector(s);
-const canvas=$("#view"), ctx=canvas.getContext("2d");
-const jcanvas=$("#julia"), jctx=jcanvas.getContext("2d");
-const stage=$("#stage");
+const stage=$("#stage"), jcanvas=$("#julia"), jctx=jcanvas.getContext("2d");
+let canvas=$("#view");
+const FORCE_CPU=new URLSearchParams(location.search).has("cpu");
+const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const BAIL=1e4, MAXIT=20000;
+
+// ---------- double-double numbers ----------
+// the center of the view needs way more than 16 digits once you are deep, so it lives in a
+// pair of doubles [hi, lo] where lo carries the rounding error of hi. about 32 digits total.
+const SPLIT=134217729;
+function twoSum(a,b){ const s=a+b, bb=s-a; return [s,(a-(s-bb))+(b-bb)]; }
+function qts(s,e){ const h=s+e; return [h,e-(h-s)]; }
+function ddAdd(a,b){ let [s,e]=twoSum(a[0],b[0]); const [t,f]=twoSum(a[1],b[1]); e+=t; [s,e]=qts(s,e); e+=f; return qts(s,e); }
+function ddAddD(a,b){ let [s,e]=twoSum(a[0],b); e+=a[1]; return qts(s,e); }
+function ddSub(a,b){ return ddAdd(a,[-b[0],-b[1]]); }
+function ddMulD(a,b){ const p=a[0]*b, t=SPLIT*a[0], ah=t-(t-a[0]), al=a[0]-ah, u=SPLIT*b, bh=u-(u-b), bl=b-bh;
+  const e=((ah*bh-p)+ah*bl+al*bh)+al*bl+a[1]*b; return qts(p,e); }
+function dd(x){ return [x,0]; }
+function ddNum(a){ return a[0]+a[1]; }
+// exact decimal in and out, via bigint, so deep positions survive a trip through the url
+const DEC=48n, DECN=48;
+function bigOf(x){ const s=x.toFixed(DECN), neg=s[0]==="-", [i,f]=s.replace("-","").split("."); const b=BigInt(i+f); return neg?-b:b; }
+function ddToStr(a,digits){
+  digits=Math.max(2,Math.min(DECN,digits));
+  let b=bigOf(a[0])+bigOf(a[1]); const neg=b<0n; if(neg) b=-b;
+  const sc=10n**(DEC-BigInt(digits)); b=(b+sc/2n)/sc;
+  let s=b.toString().padStart(digits+1,"0"); s=s.slice(0,-digits)+"."+s.slice(-digits);
+  return (neg?"-":"")+s;
+}
+function strToDD(str){
+  const hi=parseFloat(str); if(!isFinite(hi)) return null;
+  if(!/^-?\d*\.?\d*$/.test(str.trim())) return dd(hi);
+  const t=str.trim(), neg=t[0]==="-", [i,f=""]=t.replace("-","").split(".");
+  const big=BigInt((i||"0")+f.slice(0,DECN).padEnd(DECN,"0"))*(neg?-1n:1n);
+  return qts(hi, Number(big-bigOf(hi))/1e48);
+}
+// the reference orbit in double-double: one point iterated with 32-digit precision.
+// written out by hand so the inner loop does not allocate.
+function refOrbitDD(cxh,cxl,cyh,cyl,it,a){
+  let xh=0,xl=0,yh=0,yl=0,M=it; a[0]=0;a[1]=0;
+  for(let k=1;k<=it;k++){
+    let p=xh*xh, t=SPLIT*xh, hh=t-(t-xh), hl=xh-hh, e=((hh*hh-p)+2*hh*hl)+hl*hl+2*xh*xl, x2h=p+e, x2l=e-(x2h-p);
+    p=yh*yh; t=SPLIT*yh; hh=t-(t-yh); hl=yh-hh; e=((hh*hh-p)+2*hh*hl)+hl*hl+2*yh*yl; const y2h=p+e, y2l=e-(y2h-p);
+    p=xh*yh; t=SPLIT*xh; const ah=t-(t-xh), al=xh-ah; t=SPLIT*yh; const bh=t-(t-yh), bl=yh-bh;
+    e=((ah*bh-p)+ah*bl+al*bh)+al*bl+xh*yl+xl*yh; const xyh=p+e, xyl=e-(xyh-p);
+    let s=x2h-y2h, bb=s-x2h, err=(x2h-(s-bb))+(-y2h-bb); err+=x2l-y2l; let nh=s+err, nl=err-(nh-s);
+    s=nh+cxh; bb=s-nh; err=(nh-(s-bb))+(cxh-bb); err+=nl+cxl; const xnh=s+err, xnl=err-(xnh-s);
+    const q=2*xyh; s=q+cyh; bb=s-q; err=(q-(s-bb))+(cyh-bb); err+=2*xyl+cyl; const ynh=s+err, ynl=err-(ynh-s);
+    xh=xnh;xl=xnl;yh=ynh;yl=ynl;
+    a[2*k]=xh; a[2*k+1]=yh;
+    if(xh*xh+yh*yh>BAIL){ M=k; break; }
+  }
+  return M;
+}
 
 // ---------- view state ----------
-let cx=-0.75, cy=0, width=3.2, maxIter=500, palette="inferno", phase=0;
-let W=0,H=0, img=null, values=null, renderJob=0, juliaOn=true;
+const HOME={cx:dd(-0.75),cy:dd(0),width:3.2};
+let cx=HOME.cx, cy=HOME.cy, width=HOME.width, palette="inferno", phase=0, autoIter=true, manualIter=500, maxIter=500;
+let W=0,H=0, juliaOn=true, moving=false, settleTimer=null, needsDraw=false, hashTimer=null;
 
-// ---------- workers ----------
-const NW=Math.max(2,Math.min(16,navigator.hardwareConcurrency||4));
-const blob=new Blob([$("#worker-src").textContent],{type:"text/javascript"});
-const wurl=URL.createObjectURL(blob);
-const workers=[]; for(let i=0;i<NW;i++){ const w=new Worker(wurl); w.onmessage=onStrip; workers.push(w); }
+// iterations that make sense for a given zoom. grows with the log of the zoom,
+// so the whole set gets a few hundred and a hundred-million-x view gets a couple thousand.
+function autoIterFor(w){ const z=HOME.width/w; return Math.round(Math.min(MAXIT, 200+90*Math.pow(Math.max(0,Math.log10(z)),1.5))/25)*25; }
+function currentIter(){ return autoIter ? autoIterFor(width) : manualIter; }
+function digitsFor(w){ return Math.ceil(Math.log10(1/w))+5; }
 
-// ---------- palettes ----------
-function lerp(a,b,t){return a+(b-a)*t}
-function grad(stops,t){
-  t=((t%1)+1)%1;
-  const n=stops.length-1,p=t*n,k=Math.min(n-1,Math.floor(p)),f=p-k,A=stops[k],B=stops[k+1];
-  return [lerp(A[0],B[0],f),lerp(A[1],B[1],f),lerp(A[2],B[2],f)];
-}
+// ---------- palettes, blended in oklab so the midpoints don't go grey ----------
 const PALETTES={
-  inferno: [[0,0,4],[40,11,84],[101,21,110],[159,42,99],[212,72,66],[245,125,21],[250,193,39],[252,255,164],[0,0,4]],
-  ocean:   [[2,6,30],[10,40,110],[0,110,170],[0,190,210],[140,240,250],[255,255,255],[2,6,30]],
-  aurora:  [[5,5,20],[20,60,90],[30,180,140],[170,240,120],[250,250,200],[230,120,200],[5,5,20]],
-  candy:   [[30,10,50],[203,166,247],[245,194,231],[250,179,135],[249,226,175],[148,226,213],[30,10,50]],
-  electric:[[0,0,0],[0,30,255],[0,255,255],[255,255,0],[255,0,140],[120,0,255],[0,0,0]],
-  ink:     [[0,0,0],[40,40,50],[120,120,135],[230,230,240],[255,255,255],[90,90,105],[0,0,0]],
+  inferno: [[0,0,4],[31,12,72],[85,15,109],[136,34,106],[186,54,85],[227,89,51],[249,140,10],[252,194,40],[245,235,130],[252,255,190],[240,180,60],[170,55,80],[60,10,90]],
+  ocean:   [[2,5,22],[6,25,80],[10,60,150],[20,120,205],[70,190,235],[190,240,250],[255,255,255],[150,215,240],[40,120,190],[10,45,120]],
+  aurora:  [[6,7,26],[12,40,75],[15,110,115],[40,190,130],[150,240,120],[235,250,190],[240,180,230],[180,90,210],[90,40,150],[30,15,70]],
+  candy:   [[30,20,50],[137,180,250],[148,226,213],[166,227,161],[249,226,175],[250,179,135],[243,139,168],[245,194,231],[203,166,247],[90,60,130]],
+  electric:[[0,0,0],[20,0,120],[0,60,255],[0,200,255],[190,255,255],[255,255,255],[255,120,220],[180,0,200],[70,0,120]],
+  sunset:  [[20,10,40],[60,25,90],[130,40,110],[210,70,90],[250,130,70],[255,200,110],[255,240,190],[240,170,150],[150,80,140],[60,30,90]],
+  twilight:[[226,217,226],[180,160,220],[110,100,200],[60,50,140],[30,20,60],[20,15,30],[70,20,40],[140,40,60],[200,100,90],[230,180,170]],
+  ink:     [[0,0,0],[22,24,34],[60,64,80],[130,136,160],[220,224,235],[255,255,255],[190,195,210],[90,95,115],[30,32,44]],
 };
-// precompute a 2048 entry lookup so coloring is a table read, not a gradient calc per pixel
-let LUT=new Uint8ClampedArray(2048*3);
-function buildLUT(){
-  const st=PALETTES[palette];
-  for(let i=0;i<2048;i++){ const [r,g,b]=grad(st,i/2048+phase/100); LUT[i*3]=r;LUT[i*3+1]=g;LUT[i*3+2]=b; }
+function srgb2lin(c){c/=255;return c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4)}
+function lin2srgb(c){c=Math.max(0,Math.min(1,c));return 255*(c<=0.0031308?c*12.92:1.055*Math.pow(c,1/2.4)-0.055)}
+function rgb2oklab([r,g,b]){ r=srgb2lin(r);g=srgb2lin(g);b=srgb2lin(b);
+  const l=Math.cbrt(0.4122214708*r+0.5363325363*g+0.0514459929*b), m=Math.cbrt(0.2119034982*r+0.6806995451*g+0.1073969566*b), s=Math.cbrt(0.0883024619*r+0.2817188376*g+0.6299787005*b);
+  return [0.2104542553*l+0.7936177850*m-0.0040720468*s, 1.9779984951*l-2.4285922050*m+0.4505937099*s, 0.0259040371*l+0.7827717662*m-0.8086757660*s]; }
+function oklab2rgb([L,a,b]){ const l=(L+0.3963377774*a+0.2158037573*b)**3, m=(L-0.1055613458*a-0.0638541728*b)**3, s=(L-0.0894841775*a-1.2914855480*b)**3;
+  return [lin2srgb(4.0767416621*l-3.3077115913*m+0.2309699292*s), lin2srgb(-1.2684380046*l+2.6097574011*m-0.3413193965*s), lin2srgb(-0.0041960863*l-0.7034186147*m+1.7076147010*s)]; }
+const LUTN=2048, LUT=new Uint8ClampedArray(LUTN*4);
+function paletteColor(name,t){ // t in [0,1) around the loop, cosine-eased between stops so there are no kinks
+  const st=PALETTES[name], n=st.length; t=((t%1)+1)%1; const p=t*n, k=Math.floor(p), f=p-k, s=0.5-0.5*Math.cos(Math.PI*f);
+  const A=st[k], B=st[(k+1)%n], a=A.lab||(A.lab=rgb2oklab(A)), b=B.lab||(B.lab=rgb2oklab(B));
+  return oklab2rgb([a[0]+(b[0]-a[0])*s, a[1]+(b[1]-a[1])*s, a[2]+(b[2]-a[2])*s]);
 }
-function paint(y0,y1){
-  const d=img.data;
-  for(let py=y0;py<y1;py++){
-    for(let px=0;px<W;px++){
-      const v=values[py*W+px], o=(py*W+px)*4;
-      if(v<0){ d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=255; continue; }
-      const t=Math.log(1+v)*0.16;
-      const k=(Math.floor((((t%1)+1)%1)*2048))*3;
-      d[o]=LUT[k];d[o+1]=LUT[k+1];d[o+2]=LUT[k+2];d[o+3]=255;
-    }
-  }
-  // img is the full canvas-sized buffer, so its origin goes at (0,0) and we
-  // only mark rows y0..y1 dirty. passing y0 as the origin too doubles the
-  // offset and every strip lands at 2*y0, which is exactly the torn stripes.
-  ctx.putImageData(img,0,0,0,y0,W,y1-y0);
+function buildLUT(){ for(let i=0;i<LUTN;i++){ const [r,g,b]=paletteColor(palette,i/LUTN); LUT[i*4]=r;LUT[i*4+1]=g;LUT[i*4+2]=b;LUT[i*4+3]=255; } if(gpu) gpu.uploadLut(); }
+function cssGradient(name){ const s=[]; for(let i=0;i<=24;i++){ const [r,g,b]=paletteColor(name,i/24); s.push(`rgb(${r|0},${g|0},${b|0})`);} return `linear-gradient(90deg,${s.join(",")})`; }
+// smooth count in, rgb out. a gentle log ramp handles the calm outside, the sqrt term gives
+// the busy edge full color cycles instead of one flat tone. identical formula in the shader.
+function colorAt(v,density,d,o){
+  if(v<0){ d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=255; return; }
+  const t=(0.10*Math.log2(1+v)+0.085*Math.sqrt(v)-0.18)*density+phase/100, k=((Math.floor((((t%1)+1)%1)*LUTN))&(LUTN-1))*4;
+  d[o]=LUT[k];d[o+1]=LUT[k+1];d[o+2]=LUT[k+2];d[o+3]=255;
 }
 
-// ---------- rendering ----------
-function fit(){
-  const r=stage.getBoundingClientRect();
-  const dpr=Math.min(devicePixelRatio||1,2);
-  W=Math.floor(r.width*dpr); H=Math.floor(Math.min(r.width*0.62,640)*dpr);
-  canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
-  img=ctx.createImageData(W,H); values=new Float32Array(W*H);
+// ---------- the gpu path: webgl2 + perturbation ----------
+let gpu=null;
+const orbit64=new Float64Array((MAXIT+1)*2), orbit32=new Float32Array(Math.ceil((MAXIT+1)*2/4096)*4096);
+function initGPU(){
+  if(FORCE_CPU) return null;
+  let gl; try{ gl=canvas.getContext("webgl2",{antialias:false,alpha:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:"high-performance"}); }catch(e){ gl=null; }
+  if(!gl) return null;
+  const VS=`#version 300 es
+    void main(){ vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2)); gl_Position=vec4(p*2.0-1.0,0.0,1.0); }`;
+  const FS=`#version 300 es
+    precision highp float; precision highp int;
+    uniform vec2 uRes, uPix, uC0; uniform int uMaxIter, uRefLen, uBulbs;
+    uniform sampler2D uOrbit, uLut; uniform float uPhase;
+    out vec4 fragColor;
+    vec2 orbit(int n){ return texelFetch(uOrbit, ivec2(n&2047, n>>11), 0).rg; }
+    void main(){
+      // offset of this pixel from the reference point at the center of the screen
+      vec2 dc=vec2((gl_FragCoord.x-0.5*uRes.x)*uPix.x, (0.5*uRes.y-gl_FragCoord.y)*uPix.y);
+      if(uBulbs==1){ vec2 c=uC0+dc; float q=(c.x-0.25)*(c.x-0.25)+c.y*c.y;
+        if(q*(q+(c.x-0.25))<=0.25*c.y*c.y || (c.x+1.0)*(c.x+1.0)+c.y*c.y<=0.0625){ fragColor=vec4(0,0,0,1); return; } }
+      vec2 dz=vec2(0.0); int n=0; float v=-1.0;
+      for(int i=0;i<uMaxIter;i++){
+        vec2 Z=orbit(n);
+        dz=2.0*vec2(Z.x*dz.x-Z.y*dz.y, Z.x*dz.y+Z.y*dz.x)+vec2(dz.x*dz.x-dz.y*dz.y, 2.0*dz.x*dz.y)+dc;
+        n++;
+        vec2 z=orbit(n)+dz; float zz=dot(z,z);
+        if(zz>1e4){ v=float(i+2)-log2(0.5*log(zz)/0.6931471805599453); break; }
+        if(n>=uRefLen || zz<dot(dz,dz)){ dz=z; n=0; }   // rebase onto the start of the orbit
+      }
+      if(v<0.0){ fragColor=vec4(0,0,0,1); return; }
+      v=max(v,0.0); float t=0.10*log2(1.0+v)+0.085*sqrt(v)-0.18+uPhase;
+      fragColor=vec4(texture(uLut, vec2(t,0.5)).rgb, 1.0);
+    }`;
+  const BLIT=`#version 300 es
+    precision highp float; uniform sampler2D uTex; uniform vec2 uRes; out vec4 o;
+    void main(){ o=texture(uTex, gl_FragCoord.xy/uRes); }`;
+  function sh(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+  function prog(fs){ const p=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(p);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p; }
+  let P,B; try{ P=prog(FS); B=prog(BLIT); }catch(e){ console.warn("shader failed, using cpu", e); return null; }
+  const U=n=>gl.getUniformLocation(P,n), u={res:U("uRes"),pix:U("uPix"),c0:U("uC0"),maxIter:U("uMaxIter"),refLen:U("uRefLen"),bulbs:U("uBulbs"),orbit:U("uOrbit"),lut:U("uLut"),phase:U("uPhase")};
+  const bu={tex:gl.getUniformLocation(B,"uTex"),res:gl.getUniformLocation(B,"uRes")};
+  const orbitTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,orbitTex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const lutTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,lutTex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  // offscreen target for reduced-resolution frames while moving on slow gpus
+  const fbo=gl.createFramebuffer(), fboTex=gl.createTexture(); let fw=0,fh=0;
+  gl.bindTexture(gl.TEXTURE_2D,fboTex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+  const g={gl, mscale:1, frameTimes:[]};
+  g.uploadLut=()=>{ gl.bindTexture(gl.TEXTURE_2D,lutTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,LUTN,1,0,gl.RGBA,gl.UNSIGNED_BYTE,LUT); };
+  g.draw=(scale)=>{
+    const rw=Math.max(1,Math.round(W*scale)), rh=Math.max(1,Math.round(H*scale));
+    const it=maxIter, M=refOrbitDD(cx[0],cx[1],cy[0],cy[1],it,orbit64);
+    const rows=Math.ceil((M+1)/2048); orbit32.set(orbit64.subarray(0,(M+1)*2));
+    gl.bindTexture(gl.TEXTURE_2D,orbitTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RG32F,2048,rows,0,gl.RG,gl.FLOAT,orbit32.subarray(0,rows*4096));
+    const off=scale<1;
+    if(off){ if(fw!==rw||fh!==rh){ gl.bindTexture(gl.TEXTURE_2D,fboTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,rw,rh,0,gl.RGBA,gl.UNSIGNED_BYTE,null); fw=rw;fh=rh; }
+      gl.bindFramebuffer(gl.FRAMEBUFFER,fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,fboTex,0); }
+    else gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    gl.viewport(0,0,rw,rh); gl.useProgram(P);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,orbitTex); gl.uniform1i(u.orbit,0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,lutTex); gl.uniform1i(u.lut,1);
+    gl.uniform2f(u.res,rw,rh); gl.uniform2f(u.pix,width/rw,(width*H/W)/rh); gl.uniform2f(u.c0,cx[0],cy[0]);
+    gl.uniform1i(u.maxIter,it); gl.uniform1i(u.refLen,M); gl.uniform1i(u.bulbs,width>1e-3?1:0);
+    gl.uniform1f(u.phase,phase/100);
+    // split heavy frames into bands so no single draw call runs long enough to upset a gpu watchdog
+    const bands=Math.max(1,Math.min(64,Math.ceil(it*rw*rh/4e8)));
+    if(bands>1) gl.enable(gl.SCISSOR_TEST);
+    for(let b=0;b<bands;b++){ const y0=Math.floor(rh*b/bands), y1=Math.floor(rh*(b+1)/bands); if(bands>1) gl.scissor(0,y0,rw,y1-y0); gl.drawArrays(gl.TRIANGLES,0,3); }
+    if(bands>1) gl.disable(gl.SCISSOR_TEST);
+    if(off){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H); gl.useProgram(B);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,fboTex); gl.uniform1i(bu.tex,0); gl.uniform2f(bu.res,W,H); gl.drawArrays(gl.TRIANGLES,0,3); }
+  };
+  // wait for the gpu to actually finish, without blocking, so the hud can show a real number
+  g.timeFrame=(t0)=>{
+    const sync=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0); gl.flush();
+    const poll=()=>{ const s=gl.clientWaitSync(sync,0,0);
+      if(s===gl.TIMEOUT_EXPIRED){ setTimeout(poll,3); return; }
+      gl.deleteSync(sync); if(!moving) setHudTime(performance.now()-t0); };
+    setTimeout(poll,2);
+  };
+  // adaptive quality while moving: if frames come in slow, render smaller and upscale
+  g.noteFrame=(dt)=>{ const f=g.frameTimes; f.push(dt); if(f.length>8) f.shift();
+    if(f.length>=4){ const avg=f.reduce((a,b)=>a+b,0)/f.length;
+      if(avg>26&&g.mscale>0.25){ g.mscale=Math.max(0.25,g.mscale/1.5); f.length=0; }
+      else if(avg<11&&g.mscale<1){ g.mscale=Math.min(1,g.mscale*1.5); f.length=0; } } };
+  canvas.addEventListener("webglcontextlost",e=>{ e.preventDefault(); switchToCPU(); },{once:true});
+  return g;
 }
-let pending=0, t0=0, totalStrips=0, inFlight=false, wantRender=false;
 
-// the rule: only ONE full render in flight at a time. if anything asks for a
-// render while one is running, remember it and run once more when this one
-// finishes. otherwise a glide animation floods the workers with 60 jobs a
-// second, most get abandoned half done, and you get alternating stripes.
-function render(){
-  if(inFlight){ wantRender=true; previewOnly(); return; }
-  startRender();
+// ---------- the cpu path: web workers, strips, a pull queue ----------
+const cpu={on:false, ctx:null, frame:null, fctx:null, fimg:null, fview:null, tmp:null, lo:null, workers:[], job:null, full:null, jobId:0, t0:0};
+function initCPU(){
+  cpu.on=true; cpu.ctx=canvas.getContext("2d"); cpu.ctx.imageSmoothingEnabled=true; cpu.ctx.imageSmoothingQuality="high";
+  cpu.frame=document.createElement("canvas"); cpu.fctx=cpu.frame.getContext("2d");
+  cpu.tmp=document.createElement("canvas"); cpu.lo=document.createElement("canvas");
+  const NW=Math.max(2,Math.min(16,navigator.hardwareConcurrency||4));
+  for(let i=0;i<NW;i++){ const w=new Worker(wurl); w.busy=false; w.onmessage=onStrip; cpu.workers.push(w); }
 }
-function previewOnly(){
-  const h=width*H/W, x0=cx-width/2, y0=cy-h/2, dx=width/W, dy=h/H;
-  coarsePreview(x0,y0,dx,dy);
-  updateHud(null);
+function switchToCPU(){ // the webgl context died: swap in a fresh canvas and carry on in software
+  if(cpu.on) return; gpu=null;
+  const c=document.createElement("canvas"); c.id="view"; canvas.replaceWith(c); canvas=c;
+  initCPU(); fit(); requestDraw(); settle();
 }
-function coarsePreview(x0,y0,dx,dy){
-  const step=6, d=img.data;
-  for(let py=0;py<H;py+=step){ const ci=y0+py*dy;
-    for(let px=0;px<W;px+=step){
-      // same iteration cap as the real pass so the preview colors match
-      const v=quickEscape(x0+px*dx,ci,maxIter);
-      let r=0,g=0,b=0;
-      if(v>=0){ const t=Math.log(1+v)*0.16, k=(Math.floor((((t%1)+1)%1)*2048))*3; r=LUT[k];g=LUT[k+1];b=LUT[k+2]; }
-      for(let yy=py;yy<Math.min(H,py+step);yy++) for(let xx=px;xx<Math.min(W,px+step);xx++){ const o=(yy*W+xx)*4; d[o]=r;d[o+1]=g;d[o+2]=b;d[o+3]=255; }
-    }
-  }
-  ctx.putImageData(img,0,0);
+function makeJob(scale){
+  const w=Math.max(1,Math.round(W*scale)), h=Math.max(1,Math.round(H*scale)), hp=width*H/W;
+  const j={id:++cpu.jobId, scale, w, h, dx:width/w, dy:hp/h, maxIter, view:{cx,cy,width},
+    strip:scale<1?Math.max(2,Math.ceil(h/cpu.workers.length)):6, next:0, done:0, vals:new Float32Array(w*h), img:null};
+  j.total=Math.ceil(h/j.strip); if(scale<1) j.img=new ImageData(w,h);
+  // every worker gets this job's reference orbit once, then pulls strips against it
+  if(width>1e-11){ for(const wk of cpu.workers) wk.postMessage({type:"orbit",job:j.id,Z:null,M:0}); }
+  else { const M=refOrbitDD(cx[0],cx[1],cy[0],cy[1],maxIter,orbit64), Z=orbit64.slice(0,(M+1)*2);
+    for(const wk of cpu.workers) wk.postMessage({type:"orbit",job:j.id,Z,M}); }
+  return j;
 }
-function startRender(){
-  const job=++renderJob; pending=0; t0=performance.now(); inFlight=true; wantRender=false;
-  const h=width*H/W, x0=cx-width/2, y0=cy-h/2, dx=width/W, dy=h/H;
-  coarsePreview(x0,y0,dx,dy);
-  const STRIP=Math.ceil(H/(NW*3));
-  let k=0;
-  for(let y=0;y<H;y+=STRIP){
-    const y1=Math.min(H,y+STRIP);
-    workers[k%NW].postMessage({job,y0:y,y1,W,x0,cy0:y0,dx,dy,maxIter});
-    k++; pending++;
-  }
-  totalStrips=pending;
-  $("#prog").style.width="0%"; $("#prog").classList.add("on");
-  updateHud(null);
-}
-function quickEscape(cr,ci,max){let x=0,y=0,i=0;while(x*x+y*y<=4&&i<max){const xt=x*x-y*y+cr;y=2*x*y+ci;x=xt;i++;}if(i===max)return -1;const l=Math.log(x*x+y*y)/2;return i+1-Math.log(l/Math.LN2)/Math.LN2;}
+function feed(w){ const j=cpu.job; if(!j||j.next>=j.h){ w.busy=false; return; }
+  const y0=j.next, y1=Math.min(j.h,y0+j.strip); j.next=y1; w.busy=true;
+  w.postMessage({job:j.id,y0,y1,w:j.w,h:j.h,dx:j.dx,dy:j.dy,maxIter:j.maxIter,bulbs:width>1e-3,c0r:cx[0],c0i:cy[0],direct:width>1e-11}); }
+function feedAll(){ for(const w of cpu.workers) if(!w.busy) feed(w); }
 function onStrip(e){
-  const {job,y0,y1,out}=e.data;
-  if(job!==renderJob) return;
-  values.set(out,y0*W);
-  paint(y0,y1);
-  pending--;
-  $("#prog").style.width=(100*(1-pending/totalStrips))+"%";
-  if(pending===0){
-    inFlight=false;
-    $("#prog").classList.remove("on"); updateHud(performance.now()-t0);
-    if(wantRender) startRender();   // state changed while we were busy, go again
+  const m=e.data, j=cpu.job;
+  if(!j||m.job!==j.id||!m.out){ feed(e.target); return; }
+  j.vals.set(m.out,m.y0*j.w);
+  if(j.scale===1){ const d=cpu.fimg.data; for(let i=m.y0*W,o=i*4;i<m.y1*W;i++,o+=4) colorAt(j.vals[i],1,d,o);
+    cpu.fctx.putImageData(cpu.fimg,0,0,0,m.y0,W,m.y1-m.y0); requestDraw();
+    $("#prog").style.width=(100*(j.done+1)/j.total)+"%"; }
+  else { const d=j.img.data; for(let i=m.y0*j.w,o=i*4;i<m.y1*j.w;i++,o+=4) colorAt(j.vals[i],1,d,o); }
+  if(++j.done===j.total) completeJob(j);
+  feed(e.target);
+}
+function completeJob(j){
+  if(j.scale<1){
+    cpu.lo.width=j.w; cpu.lo.height=j.h; cpu.lo.getContext("2d").putImageData(j.img,0,0);
+    cpu.fctx.imageSmoothingEnabled=true; cpu.fctx.drawImage(cpu.lo,0,0,W,H); cpu.fview=j.view; requestDraw();
+    cpu.job=makeJob(1); $("#prog").style.width="0%"; $("#prog").classList.add("on"); feedAll();
+  } else {
+    cpu.full={vals:j.vals,view:j.view}; cpu.job=null; $("#prog").classList.remove("on");
+    setHudTime(performance.now()-cpu.t0); requestDraw();
   }
 }
-function recolor(){ buildLUT(); if(values) paint(0,H); }
-
-function updateHud(ms){
-  const zoom=3.2/width;
-  const z=zoom>=1e6?zoom.toExponential(2)+"x":(zoom<10?zoom.toFixed(2):Math.round(zoom).toLocaleString())+"x";
-  $("#hud").innerHTML=`<div class="zoom">${z}</div>re <b>${cx.toPrecision(12)}</b><br>im <b>${cy.toPrecision(12)}</b><br>iterations <b>${maxIter}</b> &middot; ${NW} workers${ms!==null?`<br>rendered in <b>${ms.toFixed(0)} ms</b>`:"<br>rendering..."}`;
-  history.replaceState(null,"",`#${cx},${cy},${width},${maxIter},${palette},${phase}`);
+function sameView(a,b){ return a&&b&&a.cx===b.cx&&a.cy===b.cy&&a.width===b.width; }
+// where the last finished frame lands on screen for the current view
+function frameRect(v){ const s=v.width/width; return [ ddNum(ddSub(v.cx,cx))/width*W+W/2-s*W/2, ddNum(ddSub(v.cy,cy))/width*W+H/2-s*H/2, s*W, s*H ]; }
+function cpuComposite(){
+  const c=cpu.ctx; c.fillStyle="#000"; c.fillRect(0,0,W,H);
+  if(cpu.fview){ const [x,y,w,h]=frameRect(cpu.fview); c.drawImage(cpu.frame,x,y,w,h); }
+}
+function cpuSettle(){
+  cpu.job=null; cpu.t0=performance.now();
+  const v={cx,cy,width};
+  const covered = cpu.fview && cpu.fview.width/width<=4 && (()=>{ const [x,y,w,h]=frameRect(cpu.fview); return x<=0&&y<=0&&x+w>=W&&y+h>=H; })();
+  if(covered){ // the old frame already covers the screen well enough: keep it and refine in place
+    const t=cpu.tmp.getContext("2d"), [x,y,w,h]=frameRect(cpu.fview);
+    t.fillStyle="#000"; t.fillRect(0,0,W,H); t.imageSmoothingEnabled=true; t.imageSmoothingQuality="high"; t.drawImage(cpu.frame,x,y,w,h);
+    cpu.fctx.drawImage(cpu.tmp,0,0); cpu.fview=v;
+    cpu.job=makeJob(1); $("#prog").style.width="0%"; $("#prog").classList.add("on");
+  } else cpu.job=makeJob(1/6);
+  feedAll();
+}
+function cpuRecolor(){
+  if(cpu.full&&sameView(cpu.full.view,cpu.fview)){ const d=cpu.fimg.data, v=cpu.full.vals; for(let i=0,o=0;i<W*H;i++,o+=4) colorAt(v[i],1,d,o); cpu.fctx.putImageData(cpu.fimg,0,0); requestDraw(); }
+  if(!moving&&cpu.job) cpuSettle();
 }
 
-// ---------- julia preview ----------
-function drawJulia(cr,ci){
-  const JW=jcanvas.width,JH=jcanvas.height, jimg=jctx.createImageData(JW,JH), d=jimg.data;
-  const jw=3.2, jh=jw*JH/JW;
-  for(let py=0;py<JH;py++) for(let px=0;px<JW;px++){
-    let x=-jw/2+px/JW*jw, y=-jh/2+py/JH*jh, i=0;
-    while(x*x+y*y<=4&&i<160){ const xt=x*x-y*y+cr; y=2*x*y+ci; x=xt; i++; }
-    const o=(py*JW+px)*4;
-    if(i===160){ d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=255; continue; }
-    const l=Math.log(x*x+y*y)/2, v=i+1-Math.log(l/Math.LN2)/Math.LN2;
-    const t=Math.log(1+v)*0.22, k=(Math.floor((((t%1)+1)%1)*2048))*3;
-    d[o]=LUT[k];d[o+1]=LUT[k+1];d[o+2]=LUT[k+2];d[o+3]=255;
-  }
-  jctx.putImageData(jimg,0,0);
+// ---------- shared plumbing ----------
+const wurl=URL.createObjectURL(new Blob([$("#worker-src").textContent],{type:"text/javascript"}));
+function fit(){
+  const r=stage.getBoundingClientRect(), dpr=Math.min(devicePixelRatio||1,2);
+  W=Math.max(1,Math.floor(r.width*dpr)); H=Math.max(1,Math.floor(Math.min(r.width*0.62,640)*dpr));
+  canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
+  if(cpu.on){ cpu.frame.width=W; cpu.frame.height=H; cpu.tmp.width=W; cpu.tmp.height=H; cpu.fimg=new ImageData(W,H); cpu.fview=null; cpu.full=null; cpu.job=null; }
 }
-let jTimer=null;
-function juliaAt(px,py){
-  if(!juliaOn) return;
-  const [r,i]=pixelToPlane(px,py);
-  jcanvas.classList.add("on"); $("#jlabel").classList.add("on");
-  clearTimeout(jTimer); jTimer=setTimeout(()=>drawJulia(r,i),16);
+function requestDraw(){ needsDraw=true; }
+let lastFrameAt=0;
+function draw(){
+  maxIter=currentIter();
+  if(gpu){
+    const t0=performance.now();
+    gpu.draw(moving?gpu.mscale:1);
+    if(moving){ if(lastFrameAt) gpu.noteFrame(t0-lastFrameAt); lastFrameAt=t0; } else { lastFrameAt=0; gpu.timeFrame(t0); }
+  } else cpuComposite();
+  updateHud();
 }
+function loop(){ requestAnimationFrame(loop); if(glide) stepGlide(performance.now()); if(needsDraw){ needsDraw=false; draw(); } }
+
+// every input funnels through here. while moving we draw cheap frames; once input stops we settle.
+function viewChanged(){
+  moving=true; requestDraw(); if(cpu.on&&cpu.job){ cpu.job=null; $("#prog").classList.remove("on"); }
+  clearTimeout(settleTimer); settleTimer=setTimeout(settle,90);
+}
+function settle(){
+  clearTimeout(settleTimer); moving=false; maxIter=currentIter(); syncIterUI(); requestDraw();
+  if(cpu.on) cpuSettle();
+  clearTimeout(hashTimer); hashTimer=setTimeout(writeHash,250);
+  markSpot();
+}
+function recolor(){ buildLUT(); if(gpu) requestDraw(); else cpuRecolor(); drawJuliaCached(); }
+
+function fmtZoom(){ const z=HOME.width/width; return (z>=1e6?z.toExponential(2):z<10?z.toFixed(2):Math.round(z).toLocaleString("en-US"))+"x"; }
+function updateHud(){
+  const dg=Math.max(12,digitsFor(width));
+  $("#hzoom").textContent=fmtZoom(); $("#hre").textContent=ddToStr(cx,dg); $("#him").textContent=ddToStr(cy,dg);
+  $("#hit").textContent=maxIter.toLocaleString("en-US")+(autoIter?" auto":"");
+  const e=$("#heng"); if(gpu){ e.textContent="gpu"+(moving&&gpu.mscale<1?" · "+Math.round(gpu.mscale*100)+"% res":""); e.classList.remove("cpu"); }
+  else { e.textContent="cpu · "+cpu.workers.length+" workers"; e.classList.add("cpu"); }
+  if(moving) $("#htime").textContent="rendering";
+}
+function setHudTime(ms){ $("#htime").textContent=(ms<1?"<1":ms.toFixed(0))+" ms"; }
+function writeHash(){ const dg=Math.max(16,digitsFor(width)); lastHash=`#${ddToStr(cx,dg)},${ddToStr(cy,dg)},${width},${autoIter?"auto":manualIter},${palette},${phase}`; history.replaceState(null,"",lastHash); }
+function syncIterUI(){ const it=currentIter(); $("#iter").value=it; $("#iterv").textContent=it.toLocaleString("en-US"); $("#auto").classList.toggle("on",autoIter); sliderFill($("#iter")); }
+function sliderFill(el){ el.style.setProperty("--p",(100*(el.value-el.min)/(el.max-el.min))+"%"); }
+
+// ---------- julia preview, in its own worker ----------
+const jworker=new Worker(wurl); let jBusy=false, jPending=null, jVals=null;
+jworker.onmessage=e=>{ jBusy=false; jVals=e.data; paintJulia(); if(jPending){ const p=jPending; jPending=null; requestJulia(p[0],p[1]); } };
+function requestJulia(cr,ci){ if(jBusy){ jPending=[cr,ci]; return; } jBusy=true; jworker.postMessage({type:"julia",cr,ci,w:jcanvas.width,h:jcanvas.height,max:300}); }
+function paintJulia(){ if(!jVals) return; const {out,w,h}=jVals, im=jctx.createImageData(w,h), d=im.data; for(let i=0,o=0;i<w*h;i++,o+=4) colorAt(out[i],1.4,d,o); jctx.putImageData(im,0,0); }
+function drawJuliaCached(){ if(jVals) paintJulia(); }
+function juliaAt(px,py){ if(!juliaOn) return; const [r,i]=pixelToPlane(px,py); jcanvas.classList.add("on"); $("#jlabel").classList.add("on"); requestJulia(r,i); }
 function juliaOff(){ jcanvas.classList.remove("on"); $("#jlabel").classList.remove("on"); }
 
 // ---------- navigation ----------
-function pixelToPlane(px,py){ const h=width*H/W; return [cx-width/2+px/W*width, cy-h/2+py/H*h]; }
+// plain doubles are fine here: the julia preview does not care about the 20th digit
+function pixelToPlane(px,py){ const h=width*H/W; return [cx[0]-width/2+px/W*width, cy[0]-h/2+py/H*h]; }
 function canvasXY(e){ const r=canvas.getBoundingClientRect(), s=W/r.width; return [(e.clientX-r.left)*s,(e.clientY-r.top)*s]; }
-function zoomAt(px,py,factor){
-  const [mx,my]=pixelToPlane(px,py);
-  width/=factor;
-  const h=width*H/W;
-  cx=mx-(px/W-0.5)*width; cy=my-(py/H-0.5)*h;
-  render();
+// a glide is a path from one view to another. zooms move along the line toward the point that
+// stays fixed on screen, so it feels like flying in, and long jumps zoom out first then back in.
+let glide=null;
+function leg(c0,w0,c1,w1){
+  const r=w1/w0, dx=ddSub(c1.cx,c0.cx), dy=ddSub(c1.cy,c0.cy);
+  if(Math.abs(Math.log(r))<1e-4) return {len:Math.hypot(ddNum(dx),ddNum(dy))/w0*0.5+1e-6, at:s=>({cx:ddAdd(c0.cx,ddMulD(dx,s)),cy:ddAdd(c0.cy,ddMulD(dy,s)),width:w0})};
+  // center follows c0 + (c1-c0)*(1-k)/(1-r) with k=r^s, which is the same as flying straight
+  // toward the point that stays fixed on screen, written so it stays exact in double-double
+  return {len:Math.abs(Math.log2(r)), at:s=>{ const k=Math.pow(r,s), f=(1-k)/(1-r); return {cx:ddAdd(c0.cx,ddMulD(dx,f)),cy:ddAdd(c0.cy,ddMulD(dy,f)),width:w0*k}; }};
 }
-// smooth glide: animate width + center toward a target over a few frames
-let anim=null;
-function glideTo(tx,ty,tw,ms=650){
-  if(anim) cancelAnimationFrame(anim);
-  const sx=cx,sy=cy,sw=width,start=performance.now();
-  const ease=t=>1-Math.pow(1-t,3);
-  function step(now){
-    const t=Math.min(1,(now-start)/ms), k=ease(t);
-    cx=sx+(tx-sx)*k; cy=sy+(ty-sy)*k;
-    width=sw*Math.pow(tw/sw,k);   // geometric interpolation so zoom feels linear
-    render();
-    if(t<1) anim=requestAnimationFrame(step); else anim=null;
-  }
-  anim=requestAnimationFrame(step);
+function glideTo(tx,ty,tw,opts={}){
+  const c0={cx,cy}, c1={cx:tx,cy:ty}, w0=width;
+  const dist=Math.hypot(ddNum(ddSub(tx,cx)),ddNum(ddSub(ty,cy))), wMid=Math.max(w0,tw,dist*2.4);
+  let legs;
+  if(wMid>Math.max(w0,tw)*1.6){ const cm={cx:ddAdd(cx,ddMulD(ddSub(tx,cx),0.5)),cy:ddAdd(cy,ddMulD(ddSub(ty,cy),0.5))}; legs=[leg(c0,w0,cm,wMid),leg(cm,wMid,c1,tw)]; }
+  else legs=[leg(c0,w0,c1,tw)];
+  const total=legs.reduce((a,l)=>a+l.len,0);
+  let dur=opts.dur ?? Math.min(2600, 380+230*total); if(REDUCED) dur*=0.35;
+  glide={start:performance.now(),dur,legs,total,ease:opts.ease||"inout",end:{cx:tx,cy:ty,width:tw}};
 }
-function glideZoomAt(px,py,factor){
-  const [mx,my]=pixelToPlane(px,py);
-  const tw=width/factor, th=tw*H/W;
-  glideTo(mx-(px/W-0.5)*tw, my-(py/H-0.5)*th, tw);
+function stepGlide(now){
+  const g=glide; let s=Math.min(1,(now-g.start)/g.dur);
+  s = g.ease==="out" ? 1-Math.pow(1-s,3) : (s<0.5 ? 4*s*s*s : 1-Math.pow(-2*s+2,3)/2);
+  let d=s*g.total, p=null;
+  for(const l of g.legs){ if(d<=l.len||l===g.legs[g.legs.length-1]){ p=l.at(Math.min(1,d/l.len)); break; } d-=l.len; }
+  if(s>=1) p=g.end;   // land exactly on the target, no accumulated rounding
+  cx=p.cx; cy=p.cy; width=p.width;
+  moving=true; requestDraw(); if(cpu.on&&cpu.job){ cpu.job=null; $("#prog").classList.remove("on"); }
+  if(s>=1){ glide=null; settle(); }
 }
+function stopGlide(){ glide=null; }
+function targetOf(){ return glide ? glide.end : {cx,cy,width}; } // chain from where a running glide is going
+function zoomAt(px,py,factor,dur){
+  const t=targetOf(), tw=t.width/factor;
+  // the point under (px,py) stays put: shift the center by its screen offset times the change in width
+  const nx=ddAddD(t.cx,(px/W-0.5)*(t.width-tw)), ny=ddAddD(t.cy,(py/H-0.5)*(t.width-tw)*H/W);
+  glideTo(nx,ny,tw,{dur,ease:"out"});
+}
+function panBy(fx,fy){ const t=targetOf(); glideTo(ddAddD(t.cx,fx*t.width),ddAddD(t.cy,fy*t.width),t.width,{dur:260,ease:"out"}); }
 
 let drag=null;
-stage.addEventListener("mousedown",e=>{ drag={x:e.clientX,y:e.clientY,cx,cy,moved:false}; });
+stage.addEventListener("mousedown",e=>{ if(e.button!==0) return; drag={x:e.clientX,y:e.clientY,cx,cy,moved:false}; });
 window.addEventListener("mousemove",e=>{
   if(drag){
-    const r=canvas.getBoundingClientRect(), s=W/r.width;
-    const ddx=(e.clientX-drag.x)*s, ddy=(e.clientY-drag.y)*s;
-    if(Math.abs(ddx)+Math.abs(ddy)>4) drag.moved=true;
-    if(drag.moved){ cx=drag.cx-ddx*(width/W); cy=drag.cy-ddy*(width/W); render(); }
+    const r=canvas.getBoundingClientRect(), s=W/r.width, ddx=(e.clientX-drag.x)*s, ddy=(e.clientY-drag.y)*s;
+    if(!drag.moved&&Math.abs(ddx)+Math.abs(ddy)>4){ drag.moved=true; stopGlide(); stage.classList.add("grabbing"); juliaOff(); }
+    if(drag.moved){ cx=ddAddD(drag.cx,-ddx*(width/W)); cy=ddAddD(drag.cy,-ddy*(width/W)); viewChanged(); }
   } else if(e.target===canvas){ const [px,py]=canvasXY(e); juliaAt(px,py); }
 });
 stage.addEventListener("mouseleave",juliaOff);
 window.addEventListener("mouseup",e=>{
-  if(!drag) return;
-  if(!drag.moved && e.target===canvas){ const [px,py]=canvasXY(e); glideZoomAt(px,py,3); }
+  if(!drag) return; stage.classList.remove("grabbing");
+  if(!drag.moved&&e.target===canvas){ const [px,py]=canvasXY(e); zoomAt(px,py,e.shiftKey?1/3:3); hideHint(); }
   drag=null;
 });
 stage.addEventListener("wheel",e=>{
   e.preventDefault(); const [px,py]=canvasXY(e);
-  zoomAt(px,py,e.deltaY<0?1.35:1/1.35);
+  const ticks=Math.max(-3,Math.min(3,(e.deltaMode===1?e.deltaY*20:e.deltaY)/100));
+  zoomAt(px,py,Math.pow(1.4,-ticks),240); hideHint();
 },{passive:false});
-let touch=null;
-stage.addEventListener("touchstart",e=>{const t=e.touches[0];touch={x:t.clientX,y:t.clientY,cx,cy,moved:false};},{passive:true});
-stage.addEventListener("touchmove",e=>{
-  if(!touch) return; const t=e.touches[0]; const r=canvas.getBoundingClientRect(), s=W/r.width;
-  const ddx=(t.clientX-touch.x)*s, ddy=(t.clientY-touch.y)*s;
-  if(Math.abs(ddx)+Math.abs(ddy)>6) touch.moved=true;
-  if(touch.moved){ cx=touch.cx-ddx*(width/W); cy=touch.cy-ddy*(width/W); render(); }
+stage.addEventListener("dblclick",e=>e.preventDefault());
+// touch: one finger pans, a tap glides in, two fingers pinch
+let touch=null, pinch=null;
+stage.addEventListener("touchstart",e=>{
+  if(e.touches.length===2){ stopGlide(); const [a,b]=e.touches; pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx:(a.clientX+b.clientX)/2,my:(a.clientY+b.clientY)/2,cx,cy,width}; touch=null; }
+  else if(e.touches.length===1){ const t=e.touches[0]; touch={x:t.clientX,y:t.clientY,cx,cy,moved:false,t:performance.now()}; }
 },{passive:true});
-stage.addEventListener("touchend",()=>{
-  if(touch&&!touch.moved){ const r=canvas.getBoundingClientRect(), s=W/r.width; glideZoomAt((touch.x-r.left)*s,(touch.y-r.top)*s,3); }
+stage.addEventListener("touchmove",e=>{
+  const r=canvas.getBoundingClientRect(), s=W/r.width;
+  if(pinch&&e.touches.length===2){
+    const [a,b]=e.touches, d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY), mx=(a.clientX+b.clientX)/2, my=(a.clientY+b.clientY)/2;
+    const nw=pinch.width*pinch.d/Math.max(1,d);
+    // keep the point that was under the pinch midpoint under the (possibly moved) midpoint
+    const px0=(pinch.mx-r.left)*s, py0=(pinch.my-r.top)*s, px1=(mx-r.left)*s, py1=(my-r.top)*s;
+    width=nw;
+    cx=ddAddD(pinch.cx,(px0/W-0.5)*pinch.width-(px1/W-0.5)*nw);
+    cy=ddAddD(pinch.cy,((py0/H-0.5)*pinch.width-(py1/H-0.5)*nw)*H/W);
+    viewChanged(); return;
+  }
+  if(!touch||e.touches.length!==1) return; const t=e.touches[0];
+  const ddx=(t.clientX-touch.x)*s, ddy=(t.clientY-touch.y)*s;
+  if(!touch.moved&&Math.abs(ddx)+Math.abs(ddy)>6){ touch.moved=true; stopGlide(); }
+  if(touch.moved){ cx=ddAddD(touch.cx,-ddx*(width/W)); cy=ddAddD(touch.cy,-ddy*(width/W)); viewChanged(); }
+},{passive:true});
+stage.addEventListener("touchend",e=>{
+  if(pinch){ if(e.touches.length<2){ pinch=null; settleSoon(); } return; }
+  if(touch&&!touch.moved&&performance.now()-touch.t<400){ const r=canvas.getBoundingClientRect(), s=W/r.width; zoomAt((touch.x-r.left)*s,(touch.y-r.top)*s,3); hideHint(); }
   touch=null;
 });
+function settleSoon(){ clearTimeout(settleTimer); settleTimer=setTimeout(settle,90); }
 document.addEventListener("keydown",e=>{
-  if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
-  const pan=width*0.08;
-  if(e.key==="+"||e.key==="=") zoomAt(W/2,H/2,1.6);
-  else if(e.key==="-") zoomAt(W/2,H/2,1/1.6);
-  else if(e.key==="ArrowLeft"){cx-=pan;render();}
-  else if(e.key==="ArrowRight"){cx+=pan;render();}
-  else if(e.key==="ArrowUp"){cy-=pan;render();}
-  else if(e.key==="ArrowDown"){cy+=pan;render();}
-  else if(e.key==="r"){cx=-0.75;cy=0;width=3.2;render();}
-  else if(e.key==="j"){juliaOn=!juliaOn; if(!juliaOn) juliaOff();}
+  if(["INPUT","SELECT","TEXTAREA"].includes(e.target.tagName)||e.metaKey||e.ctrlKey) return;
+  if(e.key==="+"||e.key==="=") zoomAt(W/2,H/2,1.8,320);
+  else if(e.key==="-"||e.key==="_") zoomAt(W/2,H/2,1/1.8,320);
+  else if(e.key==="ArrowLeft") panBy(-0.1,0); else if(e.key==="ArrowRight") panBy(0.1,0);
+  else if(e.key==="ArrowUp") panBy(0,-0.1); else if(e.key==="ArrowDown") panBy(0,0.1);
+  else if(e.key==="r") glideTo(HOME.cx,HOME.cy,HOME.width);
+  else if(e.key==="j"){ juliaOn=!juliaOn; if(!juliaOn) juliaOff(); }
+  else return;
+  e.preventDefault();
 });
 
-$("#reset").onclick=()=>glideTo(-0.75,0,3.2,800);
-$("#zoomIn").onclick=()=>zoomAt(W/2,H/2,2);
-$("#zoomOut").onclick=()=>zoomAt(W/2,H/2,0.5);
-$("#palette").onchange=e=>{palette=e.target.value;recolor();updateHud(null);};
-$("#phase").oninput=e=>{phase=+e.target.value;$("#phasev").textContent=phase;recolor();};
-$("#iter").oninput=e=>{maxIter=+e.target.value;$("#iterv").textContent=maxIter;};
-$("#iter").onchange=()=>render();
-$("#save").onclick=()=>{const a=document.createElement("a");a.download="mandelbrot.png";a.href=canvas.toDataURL();a.click();};
-$("#share").onclick=async()=>{ try{ await navigator.clipboard.writeText(location.href); $("#share").textContent="copied"; setTimeout(()=>$("#share").textContent="copy link",1400);}catch{ prompt("copy this link", location.href);} };
-
+// ---------- controls ----------
+$("#reset").onclick=()=>glideTo(HOME.cx,HOME.cy,HOME.width);
+$("#zoomIn").onclick=()=>zoomAt(W/2,H/2,2,420);
+$("#zoomOut").onclick=()=>zoomAt(W/2,H/2,0.5,420);
+$("#phase").oninput=e=>{ phase=+e.target.value; $("#phasev").textContent=phase; sliderFill(e.target); recolor(); clearTimeout(hashTimer); hashTimer=setTimeout(writeHash,250); };
+$("#iter").oninput=e=>{ autoIter=false; manualIter=+e.target.value; maxIter=manualIter; syncIterUI(); if(gpu) requestDraw(); };
+$("#iter").onchange=()=>settle();
+$("#auto").onclick=()=>{ autoIter=!autoIter; if(!autoIter) manualIter=currentIter(); settle(); };
+$("#save").onclick=()=>{ if(gpu) draw(); const a=document.createElement("a"); a.download=`mandelbrot-${fmtZoom()}.png`; a.href=canvas.toDataURL("image/png"); a.click(); };
+$("#share").onclick=async()=>{ writeHash(); try{ await navigator.clipboard.writeText(location.href); $("#share").textContent="copied"; setTimeout(()=>$("#share").textContent="copy link",1400);}catch{ prompt("copy this link", location.href);} };
+for(const name of Object.keys(PALETTES)){
+  const b=document.createElement("button"); b.className="swatch"; b.title=name; b.setAttribute("aria-label",name+" palette");
+  b.style.background=cssGradient(name);
+  b.onclick=()=>{ palette=name; document.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("on",s.title===name)); recolor(); clearTimeout(hashTimer); hashTimer=setTimeout(writeHash,250); };
+  $("#palettes").appendChild(b);
+}
 const SPOTS=[
-  ["the whole thing",-0.75,0,3.2,500],
-  ["seahorse valley",-0.7463,0.1102,0.005,1000],
-  ["elephant valley",0.2929859127507,0.0136572365,0.003,1000],
-  ["double spiral",-0.7453,0.1127,0.00065,1500],
-  ["mini mandelbrot",-1.7684,0.0009,0.004,1000],
-  ["lightning",-0.1592,-1.0317,0.002,1200],
-  ["the needle",-1.99999,0,0.00015,1500],
-  ["deep",-0.743643887037158704752191506114774,0.131825904205311970493132056385139,0.00000004,2500],
+  ["the whole thing","-0.75","0",3.2,500],
+  ["seahorse valley","-0.7463","0.1102",0.005,1000],
+  ["elephant valley","0.2929859127507","0.0136572365",0.003,1000],
+  ["double spiral","-0.7453","0.1127",0.00065,1500],
+  ["mini mandelbrot","-1.7684","0.0009",0.004,1000],
+  ["lightning","-0.1592","-1.0317",0.002,1200],
+  ["the needle","-1.99999","0",0.00015,1500],
+  ["deep","-0.743643887037158704752191506114774","0.131825904205311970493132056385139",0.00000004,2500],
+  ["the island","-0.743643887037158704752191506114774","0.131825904205311970493132056385139",5e-11,3500],
 ];
 for(const [name,x,y,w,it] of SPOTS){
-  const b=document.createElement("button"); b.textContent=name;
-  b.onclick=()=>{ maxIter=it;$("#iter").value=it;$("#iterv").textContent=it; glideTo(x,y,w,1200); };
+  const b=document.createElement("button"); b.textContent=name; b.spot={cx:strToDD(x),cy:strToDD(y),width:w};
+  b.onclick=()=>{ if(!autoIter){ manualIter=it; syncIterUI(); } glideTo(b.spot.cx,b.spot.cy,w); hideHint(); };
   $("#spots").appendChild(b);
 }
+function markSpot(){ for(const b of $("#spots").children){ if(!b.spot) continue; const s=b.spot;
+  b.classList.toggle("on", Math.abs(ddNum(ddSub(s.cx,cx)))<width*0.02 && Math.abs(ddNum(ddSub(s.cy,cy)))<width*0.02 && Math.abs(Math.log(s.width/width))<0.05); } }
+function hideHint(){ $("#hint").classList.remove("on"); }
 function fromHash(){
   const h=location.hash.slice(1).split(",");
-  if(h.length>=3&&!isNaN(+h[0])){
-    cx=+h[0];cy=+h[1];width=+h[2];
-    if(h[3]){maxIter=+h[3];$("#iter").value=maxIter;$("#iterv").textContent=maxIter;}
-    if(h[4]&&PALETTES[h[4]]){palette=h[4];$("#palette").value=palette;}
-    if(h[5]){phase=+h[5];$("#phase").value=phase;$("#phasev").textContent=phase;}
+  if(h.length>=3&&+h[2]>0){
+    const x=strToDD(h[0]), y=strToDD(h[1]); if(!x||!y) return false;
+    cx=x; cy=y; width=+h[2];
+    if(h[3]&&h[3]!=="auto"&&!isNaN(+h[3])){ autoIter=false; manualIter=Math.max(100,Math.min(MAXIT,+h[3])); }
+    if(h[4]&&PALETTES[h[4]]) palette=h[4];
+    if(h[5]&&!isNaN(+h[5])) phase=Math.max(0,Math.min(100,+h[5]));
+    return true;
   }
+  return false;
 }
-let rz=null; window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{fit();render();},120);});
-fromHash(); buildLUT(); fit(); render();
+window.addEventListener("hashchange",()=>{ if(!location.hash.startsWith("#") || location.hash===lastHash) return; stopGlide(); if(fromHash()){ buildLUT(); $("#phase").value=phase; $("#phasev").textContent=phase; sliderFill($("#phase")); document.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("on",s.title===palette)); settle(); } });
+let lastHash="";
+let rz=null; window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ fit(); requestDraw(); settle(); },120); });
+
+// ---------- go ----------
+const hadHash=fromHash();
+$("#phase").value=phase; $("#phasev").textContent=phase; sliderFill($("#phase"));
+document.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("on",s.title===palette));
+gpu=initGPU(); if(!gpu) initCPU();
+buildLUT(); fit(); syncIterUI(); settle(); requestAnimationFrame(loop);
+if(!hadHash) setTimeout(()=>{ $("#hint").classList.add("on"); setTimeout(hideHint,6000); },900);
 </script>
 </body>
 </html>
