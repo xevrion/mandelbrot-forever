@@ -21,18 +21,19 @@
   }
   *{box-sizing:border-box}
   html{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  body{overscroll-behavior-y:contain}
   ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
   body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;
     -webkit-font-smoothing:antialiased}
 
-  header{padding:40px 24px 20px;max-width:1160px;margin:0 auto}
+  header{padding:32px 24px 16px;max-width:1500px;margin:0 auto}
   .eyebrow{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 10px;letter-spacing:.02em}
   h1{margin:0;font-size:clamp(28px,4vw,40px);font-weight:600;letter-spacing:-.02em;line-height:1.1}
   header p{margin:10px 0 0;color:var(--dim);max-width:64ch;font-size:16px}
   header p b{color:var(--text);font-weight:500}
 
-  main{max-width:1160px;margin:0 auto;padding:0 24px 80px;display:grid;gap:40px}
+  main{max-width:1500px;margin:0 auto;padding:0 24px 80px;display:grid;gap:40px}
   main>*{min-width:0}
 
   /* the explorer. this is the whole point of the page. */
@@ -114,12 +115,21 @@
 
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
   @media(max-width:700px){
-    header{padding:28px 16px 14px}main{padding:0 12px 60px;gap:28px}
+    header{padding:20px 16px 10px}main{padding:0 10px 60px;gap:24px}
+    h1{font-size:26px}header p{font-size:14.5px;margin-top:6px}
+    .stage{border-radius:10px}
     canvas#julia,.jlabel,.hint{display:none}
     .hud{min-width:0;font-size:11px;padding:7px 10px;line-height:1.6}.hud .zoom{font-size:16px;margin:0}
     .hud .row{display:none}.hud .row:nth-child(4){display:flex}.hud .row span:first-child{display:none}.hud .status{display:none}
-    input[type=range]{width:88px}.group{padding-left:8px;max-width:100%;height:auto;min-height:36px;flex-wrap:wrap;padding-top:4px;padding-bottom:4px}
-    .swatches{flex-wrap:wrap}.group button.swatch{width:26px;height:20px}
+    /* 44px is the minimum comfortable thumb target */
+    button{height:44px;padding:0 16px;font-size:15px}
+    .group{padding-left:10px;max-width:100%;height:auto;min-height:44px;flex-wrap:wrap;padding-top:4px;padding-bottom:4px}
+    .group button{height:36px;min-width:44px}
+    .spots button{height:40px;font-size:13px}
+    input[type=range]{width:100px;height:4px}
+    input[type=range]::-webkit-slider-thumb{width:22px;height:22px}input[type=range]::-moz-range-thumb{width:22px;height:22px}
+    .swatches{flex-wrap:wrap}.group button.swatch{width:34px;height:26px;min-width:34px}
+    .keys{display:none}
   }
 </style>
 </head>
@@ -554,7 +564,11 @@ function cpuRecolor(){
 const wurl=URL.createObjectURL(new Blob([$("#worker-src").textContent],{type:"text/javascript"}));
 function fit(){
   const r=stage.getBoundingClientRect(), dpr=Math.min(devicePixelRatio||1,2);
-  W=Math.max(1,Math.floor(r.width*dpr)); H=Math.max(1,Math.floor(Math.min(r.width*0.62,640)*dpr));
+  // size to the viewport, not a fixed cap. on a laptop the explorer takes most
+  // of the screen height; on a phone it goes tall so the fractal is the page.
+  const vh=window.innerHeight||800, phone=window.innerWidth<700;
+  const cssH=phone?Math.max(420,vh*0.72):Math.max(480,Math.min(vh*0.82,r.width*0.7));
+  W=Math.max(1,Math.floor(r.width*dpr)); H=Math.max(1,Math.floor(cssH*dpr));
   canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
   if(cpu.on){ cpu.frame.width=W; cpu.frame.height=H; cpu.tmp.width=W; cpu.tmp.height=H; cpu.fimg=new ImageData(W,H); cpu.fview=null; cpu.full=null; cpu.job=null; $("#prog").classList.remove("on"); }
 }
@@ -700,6 +714,9 @@ stage.addEventListener("touchend",e=>{
   if(touch&&!touch.moved&&performance.now()-touch.t<400){ const r=canvas.getBoundingClientRect(), s=W/r.width; zoomAt((touch.x-r.left)*s,(touch.y-r.top)*s,3); hideHint(); }
   touch=null;
 });
+// ios fires touchcancel when a call, notification, or system gesture steals the
+// touch. without this the drag state sticks and the next tap gets eaten.
+stage.addEventListener("touchcancel",()=>{ if(pinch){ pinch=null; settleSoon(); } touch=null; },{passive:true});
 function settleSoon(){ clearTimeout(settleTimer); settleTimer=setTimeout(settle,90); }
 document.addEventListener("keydown",e=>{
   if(["INPUT","SELECT","TEXTAREA"].includes(e.target.tagName)||e.metaKey||e.ctrlKey) return;
