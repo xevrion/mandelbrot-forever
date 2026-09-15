@@ -4,88 +4,122 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mandelbrot forever</title>
+<meta name="description" content="an infinitely detailed shape from one line of math. zoom in forever.">
 <style>
-  :root{--bg:#1e1e2e;--panel:#181825;--line:#313244;--text:#cdd6f4;--dim:#a6adc8;--muted:#6c7086;
-    --mauve:#cba6f7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387;--teal:#94e2d5;--pink:#f5c2e7}
+  :root{--bg:#11111b;--panel:#181825;--panel2:#1e1e2e;--line:#313244;--line2:#45475a;--text:#cdd6f4;--dim:#a6adc8;--muted:#6c7086;
+    --mauve:#cba6f7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387;--teal:#94e2d5;--pink:#f5c2e7;--yellow:#f9e2af}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:14px;line-height:1.5}
-  header{padding:18px 20px 6px;max-width:1100px;margin:0 auto}
-  h1{margin:0;font-size:20px;color:var(--mauve)}
-  header p{margin:6px 0 0;color:var(--dim);max-width:75ch}
-  main{max-width:1100px;margin:0 auto;padding:12px 20px 60px;display:grid;gap:16px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-  .panel h2{margin:0 0 8px;font-size:13px;color:var(--peach);text-transform:uppercase;letter-spacing:1px}
-  .stage{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;cursor:crosshair;user-select:none}
+  html{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:14px;line-height:1.55}
+  header{padding:26px 20px 8px;max-width:1140px;margin:0 auto}
+  h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.5px;
+    background:linear-gradient(90deg,var(--mauve),var(--pink),var(--peach));-webkit-background-clip:text;background-clip:text;color:transparent}
+  header p{margin:6px 0 0;color:var(--dim);max-width:78ch}
+  main{max-width:1140px;margin:0 auto;padding:12px 20px 70px;display:grid;gap:18px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .panel h2{margin:0 0 10px;font-size:12px;color:var(--peach);text-transform:uppercase;letter-spacing:1.5px}
+
+  /* the viewer */
+  .stage{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:#000;cursor:crosshair;user-select:none;
+    box-shadow:0 20px 60px rgba(0,0,0,.5)}
   canvas#view{width:100%;display:block}
-  .hud{position:absolute;left:10px;top:10px;background:rgba(17,17,27,.78);border:1px solid var(--line);border-radius:8px;
-    padding:8px 10px;font-size:12px;color:var(--dim);pointer-events:none;line-height:1.6}
-  .hud b{color:var(--teal)}
-  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
-  button{background:var(--line);color:var(--text);border:1px solid #45475a;padding:7px 12px;border-radius:8px;
-    font-family:inherit;cursor:pointer;font-size:13px}
-  button:hover{background:#45475a}
+  canvas#julia{position:absolute;right:12px;bottom:12px;width:190px;height:130px;border-radius:8px;border:1px solid var(--line2);
+    background:#000;opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+  canvas#julia.on{opacity:1}
+  .jlabel{position:absolute;right:12px;bottom:146px;font-size:11px;color:var(--dim);background:rgba(17,17,27,.8);
+    padding:3px 8px;border-radius:6px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .jlabel.on{opacity:1}
+  .hud{position:absolute;left:12px;top:12px;background:rgba(17,17,27,.82);backdrop-filter:blur(6px);border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px;font-size:12px;color:var(--dim);pointer-events:none;line-height:1.7;min-width:230px}
+  .hud b{color:var(--teal);font-weight:600}
+  .hud .zoom{font-size:16px;color:var(--yellow)}
+  .prog{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,var(--mauve),var(--pink));width:0%;transition:width .08s;opacity:0}
+  .prog.on{opacity:1}
+
+  /* controls */
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+  .group{display:flex;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:5px 8px}
+  .group span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-right:2px}
+  button{background:var(--line);color:var(--text);border:1px solid var(--line2);padding:7px 12px;border-radius:8px;font-family:inherit;cursor:pointer;font-size:13px;transition:background .12s,transform .06s}
+  button:hover{background:var(--line2)}
+  button:active{transform:translateY(1px)}
   button.primary{background:var(--mauve);color:#11111b;border-color:var(--mauve);font-weight:700}
-  select,input[type=range]{font-family:inherit}
-  select{background:var(--bg);color:var(--text);border:1px solid #45475a;border-radius:8px;padding:6px 8px}
-  label{color:var(--dim);font-size:12px;display:flex;align-items:center;gap:6px}
-  .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .spots button{font-size:12px;padding:5px 10px}
-  .hint{color:var(--muted);font-size:12px;margin-top:8px}
-  .why{color:var(--dim);font-size:13px;margin-top:10px;line-height:1.65;border-top:1px dashed var(--line);padding-top:10px}
+  button.primary:hover{background:var(--pink)}
+  select{background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:13px}
+  input[type=range]{accent-color:var(--mauve);width:110px}
+  .val{color:var(--teal);font-size:12px;min-width:36px;text-align:right}
+  .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .spots button{font-size:12px;padding:5px 11px;background:var(--panel2)}
+  .spots button:hover{border-color:var(--mauve);color:var(--mauve)}
+  .keys{color:var(--muted);font-size:12px;margin-top:10px;display:flex;flex-wrap:wrap;gap:14px}
+  .keys kbd{background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--text)}
+
+  .why{color:var(--dim);font-size:13px;margin-top:12px;line-height:1.7;border-top:1px dashed var(--line);padding-top:12px}
   .why b{color:var(--text)}
-  .explain{color:var(--dim);line-height:1.7}
-  .explain h3{color:var(--teal);font-size:14px;margin:18px 0 6px}
+  .explain{color:var(--dim);line-height:1.75}
+  .explain h3{color:var(--teal);font-size:14px;margin:20px 0 6px}
   .explain h3:first-child{margin-top:0}
   .explain p{margin:0 0 10px}
   .explain b{color:var(--text)}
-  .explain pre{background:#11111b;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.5;color:var(--green)}
+  .explain pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:13px 15px;overflow-x:auto;font-size:12.5px;line-height:1.55;color:var(--green)}
+  .explain code{color:var(--peach)}
   .explain a{color:var(--blue)}
   .explain sup{font-size:10px}
+  @media(max-width:700px){canvas#julia,.jlabel{display:none}.hud{min-width:0;font-size:11px}}
 </style>
 </head>
 <body>
 <header>
   <h1>mandelbrot forever</h1>
-  <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. it comes from one line of math repeated over and over.</p>
+  <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. all of it comes from one line of math, repeated.</p>
 </header>
 <main>
   <div class="panel explain">
     <h3>wait, what is this</h3>
-    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black blob in the middle is the set itself, and the colors around it are how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. it's genuinely infinite detail from a formula you could write on a napkin.</p>
-    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. you pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every pixel on screen is that one calculation, done thousands of times.</p>
-    <p><b>how to explore:</b> click anywhere to zoom in on that spot. scroll to zoom in and out. drag to pan. try the bookmarked spots below for the famous ones. the url updates as you move, so copy it to share any place you find.</p>
+    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
+    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds of times.</p>
+    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom. drag to pan. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
   </div>
 
   <div class="panel">
     <h2>explore</h2>
     <div class="stage" id="stage">
       <canvas id="view"></canvas>
+      <div class="prog" id="prog"></div>
       <div class="hud" id="hud"></div>
+      <div class="jlabel" id="jlabel">julia set at cursor</div>
+      <canvas id="julia" width="380" height="260"></canvas>
     </div>
     <div class="toolbar">
-      <button class="primary" id="reset">reset view</button>
-      <button id="zoomIn">zoom in</button>
-      <button id="zoomOut">zoom out</button>
-      <label>palette
+      <button class="primary" id="reset">reset</button>
+      <div class="group"><span>zoom</span><button id="zoomIn">+</button><button id="zoomOut">-</button></div>
+      <div class="group"><span>palette</span>
         <select id="palette">
-          <option value="fire">fire</option>
+          <option value="inferno">inferno</option>
           <option value="ocean">ocean</option>
+          <option value="aurora">aurora</option>
           <option value="candy">candy</option>
           <option value="electric">electric</option>
-          <option value="mono">mono</option>
+          <option value="ink">ink</option>
         </select>
-      </label>
-      <label>detail <input id="iter" type="range" min="100" max="3000" step="50" value="400"> <span id="iterv">400</span></label>
+      </div>
+      <div class="group"><span>shift</span><input id="phase" type="range" min="0" max="100" value="0"><span class="val" id="phasev">0</span></div>
+      <div class="group"><span>detail</span><input id="iter" type="range" min="100" max="5000" step="50" value="500"><span class="val" id="iterv">500</span></div>
       <button id="save">save png</button>
+      <button id="share">copy link</button>
     </div>
     <div class="spots" id="spots"></div>
-    <div class="hint">click = zoom in there. scroll = zoom. drag = pan. bump detail up when deep zooms look blurry or blocky.</div>
-    <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (x is the real part, y is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast. bright fast-escapers are far from the set, dark slow-escapers are hugging the edge. the "detail" slider is the maximum number of iterations we try before giving up and calling a point black. deep zooms need more, cuz points near the edge take longer to decide. the hud shows your zoom level: 1x is the whole shape, and you can go past a trillion x before the numbers run out of precision.</div>
+    <div class="keys">
+      <span><kbd>click</kbd> glide in</span><span><kbd>scroll</kbd> zoom</span><span><kbd>drag</kbd> pan</span>
+      <span><kbd>+</kbd> <kbd>-</kbd> zoom</span><span><kbd>arrows</kbd> pan</span><span><kbd>r</kbd> reset</span><span><kbd>j</kbd> toggle julia</span>
+    </div>
+    <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (left-right is the real part, up-down is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast: bright fast-escapers are far from the set, dark slow-escapers hug the edge. the <b>detail</b> slider is the max iterations before we give up and call a point black, and deep zooms need more of it cuz points near the edge take longer to decide. <b>shift</b> rotates the colors through the palette live. the corner window is the julia set for wherever your mouse is, and every point in the complex plane has its own, so you're seeing an infinite family of fractals by just moving your hand. the hud shows zoom: 1x is the whole shape, and you can go past a trillion x before the numbers run out of precision.</div>
   </div>
 
   <div class="panel explain">
     <h3>how it's actually built (the whole thing is tiny)</h3>
-    <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count how many steps until it escapes:</p>
+    <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count the steps until it escapes:</p>
 <pre>function escape(cx, cy, maxIter){
   let x=0, y=0, i=0;
   while(x*x + y*y &lt;= 4 &amp;&amp; i &lt; maxIter){
@@ -95,212 +129,287 @@
   }
   return i;
 }</pre>
-    <p>that's z = z<sup>2</sup> + c written out with real and imaginary parts, cuz javascript has no complex numbers. the "escape" test is <code>x*x + y*y &lt;= 4</code>, meaning once z gets further than 2 from the origin it's mathematically guaranteed to fly off to infinity, so we can stop early. that one fact is why the whole thing is fast enough to run in a browser.</p>
+    <p>that's z = z<sup>2</sup> + c written out with real and imaginary parts, cuz javascript has no complex number type. the escape test is <code>x*x + y*y &lt;= 4</code>: once z gets further than 2 from the origin it is mathematically guaranteed to fly off to infinity, so we stop early. that one fact is why the whole thing runs in a browser at all.</p>
 
     <h3>why the colors are smooth and not banded</h3>
-    <p>if you just color by the integer iteration count you get ugly hard stripes. the fix is a little trick called <b>smooth coloring</b>: after the point escapes, look at how far past 2 it got, and use that to add a fraction to the count. so instead of "escaped at step 37" you get "escaped at step 37.62". that fractional part is what makes the gradients silky:</p>
-<pre>// after the loop, if it escaped:
-const log_zn = Math.log(x*x + y*y) / 2;
+    <p>if you color by the raw integer iteration count you get ugly hard stripes. the fix is <b>smooth coloring</b>: after the point escapes, look at how far past 2 it overshot, and use that to add a fraction to the count. so instead of "escaped at step 37" you get "escaped at step 37.62", and that fractional part is what makes the gradients silky:</p>
+<pre>const log_zn = Math.log(x*x + y*y) / 2;
 const nu = Math.log(log_zn / Math.LN2) / Math.LN2;
 const smooth = i + 1 - nu;   // fractional iteration count</pre>
 
-    <h3>why zooming feels instant</h3>
-    <p>the canvas renders in two passes. first a fast low-res version (every 4th pixel, then filled in as blocks) so you see something immediately, then a full-res pass on top. it also renders in horizontal strips using <code>requestAnimationFrame</code> so the browser never freezes, even at 3000 iterations. no web workers, no gpu, just being a little clever about the order.</p>
+    <h3>why it doesn't freeze your browser</h3>
+    <p>rendering is split across <b>web workers</b>, one per cpu core. the image is cut into horizontal strips, each worker takes a strip, computes it, and hands back the pixels. the main thread just paints them as they land, so the page stays responsive even at 5000 iterations on a deep zoom. a quick low-res pass runs first so you see something instantly, then the full-res strips fill in over it. the little progress bar at the top of the image is the strips arriving.</p>
+
+    <h3>the julia set in the corner</h3>
+    <p>the mandelbrot set asks "starting at z=0, does this c escape?" a <b>julia set</b> flips it: fix c, and ask for every starting z whether IT escapes. so every point c on the main image has its own julia set, and they're all different. points inside the mandelbrot set give connected julia sets, points outside give dust. hover along the edge and watch them morph, it's the same six lines of code with the roles of z and c swapped.</p>
 
     <h3>why it eventually breaks</h3>
-    <p>javascript numbers are 64-bit floats with about 16 digits of precision. zoom past roughly 10<sup>13</sup>x and the pixels stop being distinguishable, so you see blocks. that's not the fractal ending, it's the number type running out. real deep-zoom software uses arbitrary precision math to go to 10<sup>100</sup>x and beyond. that's on the try-later list.</p>
+    <p>javascript numbers are 64-bit floats with about 16 digits of precision. zoom past roughly 10<sup>13</sup>x and neighbouring pixels stop being distinguishable, so you see blocks. that's not the fractal ending, it's the number type running out. real deep-zoom software uses arbitrary-precision arithmetic and perturbation theory to go to 10<sup>100</sup>x and beyond. that's on the try-later list.</p>
     <p>everything on this page is one html file, no libraries, no build, nothing to install. the source is on <a href="https://github.com/xevrion/mandelbrot-forever">github</a>, and notes.md in the repo has the bugs i hit and the numbers i measured.</p>
   </div>
 </main>
+
+<script id="worker-src" type="text/plain">
+// this runs inside each web worker. it only knows how to compute strips.
+function escape(cr,ci,max){
+  let x=0,y=0,i=0;
+  while(x*x+y*y<=4&&i<max){const xt=x*x-y*y+cr;y=2*x*y+ci;x=xt;i++;}
+  if(i===max)return -1;
+  const l=Math.log(x*x+y*y)/2;
+  return i+1-Math.log(l/Math.LN2)/Math.LN2;
+}
+onmessage=e=>{
+  const {job,y0,y1,W,x0,cy0,dx,dy,maxIter,step}=e.data;
+  const out=new Float32Array((y1-y0)*W);
+  let k=0;
+  for(let py=y0;py<y1;py++){
+    const ci=cy0+py*dy;
+    for(let px=0;px<W;px++){ out[k++]=escape(x0+px*dx,ci,maxIter); }
+  }
+  postMessage({job,y0,y1,out},[out.buffer]);
+};
+</script>
 <script>
 const $=s=>document.querySelector(s);
 const canvas=$("#view"), ctx=canvas.getContext("2d");
+const jcanvas=$("#julia"), jctx=jcanvas.getContext("2d");
 const stage=$("#stage");
 
-// view state: center in the complex plane + how wide the view is (in complex units)
-let cx=-0.75, cy=0, width=3.2, maxIter=400, palette="fire";
-let W=0,H=0, img=null, renderJob=0;
+// ---------- view state ----------
+let cx=-0.75, cy=0, width=3.2, maxIter=500, palette="inferno", phase=0;
+let W=0,H=0, img=null, values=null, renderJob=0, juliaOn=true;
 
-// ---------- the core: does this point escape, and how fast? ----------
-function escape(cr, ci, max){
-  let x=0,y=0,i=0;
-  while(x*x+y*y<=4 && i<max){
-    const xt=x*x-y*y+cr;
-    y=2*x*y+ci;
-    x=xt; i++;
-  }
-  if(i===max) return -1;                     // never escaped: in the set
-  // smooth coloring: turn the integer count into a fractional one
-  const log_zn=Math.log(x*x+y*y)/2;
-  const nu=Math.log(log_zn/Math.LN2)/Math.LN2;
-  return i+1-nu;
-}
+// ---------- workers ----------
+const NW=Math.max(2,Math.min(16,navigator.hardwareConcurrency||4));
+const blob=new Blob([$("#worker-src").textContent],{type:"text/javascript"});
+const wurl=URL.createObjectURL(blob);
+const workers=[]; for(let i=0;i<NW;i++){ const w=new Worker(wurl); w.onmessage=onStrip; workers.push(w); }
 
-// ---------- palettes: map a 0..1 value to rgb ----------
+// ---------- palettes ----------
 function lerp(a,b,t){return a+(b-a)*t}
 function grad(stops,t){
   t=((t%1)+1)%1;
-  const n=stops.length-1, p=t*n, k=Math.min(n-1,Math.floor(p)), f=p-k;
-  const A=stops[k],B=stops[k+1];
+  const n=stops.length-1,p=t*n,k=Math.min(n-1,Math.floor(p)),f=p-k,A=stops[k],B=stops[k+1];
   return [lerp(A[0],B[0],f),lerp(A[1],B[1],f),lerp(A[2],B[2],f)];
 }
 const PALETTES={
-  fire:    [[0,0,20],[60,0,80],[200,40,0],[255,160,0],[255,255,200],[0,0,20]],
-  ocean:   [[5,10,40],[0,60,120],[0,180,200],[180,240,255],[255,255,255],[5,10,40]],
-  candy:   [[40,0,60],[203,166,247],[245,194,231],[250,179,135],[249,226,175],[40,0,60]],
-  electric:[[0,0,0],[0,40,255],[0,255,255],[255,255,0],[255,0,120],[0,0,0]],
-  mono:    [[0,0,0],[80,80,90],[200,200,210],[255,255,255],[120,120,130],[0,0,0]],
+  inferno: [[0,0,4],[40,11,84],[101,21,110],[159,42,99],[212,72,66],[245,125,21],[250,193,39],[252,255,164],[0,0,4]],
+  ocean:   [[2,6,30],[10,40,110],[0,110,170],[0,190,210],[140,240,250],[255,255,255],[2,6,30]],
+  aurora:  [[5,5,20],[20,60,90],[30,180,140],[170,240,120],[250,250,200],[230,120,200],[5,5,20]],
+  candy:   [[30,10,50],[203,166,247],[245,194,231],[250,179,135],[249,226,175],[148,226,213],[30,10,50]],
+  electric:[[0,0,0],[0,30,255],[0,255,255],[255,255,0],[255,0,140],[120,0,255],[0,0,0]],
+  ink:     [[0,0,0],[40,40,50],[120,120,135],[230,230,240],[255,255,255],[90,90,105],[0,0,0]],
 };
-function color(v){
-  if(v<0) return [0,0,0];
-  // log spacing so bands near the edge and far away both get color range
-  const t=Math.log(1+v)*0.18;
-  return grad(PALETTES[palette],t);
+// precompute a 2048 entry lookup so coloring is a table read, not a gradient calc per pixel
+let LUT=new Uint8ClampedArray(2048*3);
+function buildLUT(){
+  const st=PALETTES[palette];
+  for(let i=0;i<2048;i++){ const [r,g,b]=grad(st,i/2048+phase/100); LUT[i*3]=r;LUT[i*3+1]=g;LUT[i*3+2]=b; }
+}
+function paint(y0,y1){
+  const d=img.data;
+  for(let py=y0;py<y1;py++){
+    for(let px=0;px<W;px++){
+      const v=values[py*W+px], o=(py*W+px)*4;
+      if(v<0){ d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=255; continue; }
+      const t=Math.log(1+v)*0.16;
+      const k=(Math.floor((((t%1)+1)%1)*2048))*3;
+      d[o]=LUT[k];d[o+1]=LUT[k+1];d[o+2]=LUT[k+2];d[o+3]=255;
+    }
+  }
+  ctx.putImageData(img,0,y0,0,y0,W,y1-y0);
 }
 
-// ---------- rendering, progressive so it never freezes ----------
+// ---------- rendering ----------
 function fit(){
   const r=stage.getBoundingClientRect();
   const dpr=Math.min(devicePixelRatio||1,2);
-  W=Math.floor(r.width*dpr); H=Math.floor(Math.min(r.width*0.66,620)*dpr);
+  W=Math.floor(r.width*dpr); H=Math.floor(Math.min(r.width*0.62,640)*dpr);
   canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
-  img=ctx.createImageData(W,H);
+  img=ctx.createImageData(W,H); values=new Float32Array(W*H);
 }
-function pixelToPlane(px,py){
-  const h=width*H/W;
-  return [cx-width/2+px/W*width, cy-h/2+py/H*h];
-}
+let pending=0, t0=0;
 function render(){
-  const job=++renderJob;
-  const t0=performance.now();
+  const job=++renderJob; pending=0; t0=performance.now();
   const h=width*H/W, x0=cx-width/2, y0=cy-h/2, dx=width/W, dy=h/H;
-  const data=img.data;
-  // pass 1: coarse blocks so something shows instantly
-  const step=4;
-  for(let py=0;py<H;py+=step){
+  // quick coarse preview on the main thread so the screen changes instantly
+  const step=6, d=img.data;
+  for(let py=0;py<H;py+=step){ const ci=y0+py*dy;
     for(let px=0;px<W;px+=step){
-      const v=escape(x0+px*dx,y0+py*dy,Math.min(maxIter,150));
-      const [r,g,b]=color(v);
-      for(let yy=py;yy<Math.min(H,py+step);yy++){
-        for(let xx=px;xx<Math.min(W,px+step);xx++){
-          const o=(yy*W+xx)*4; data[o]=r;data[o+1]=g;data[o+2]=b;data[o+3]=255;
-        }
-      }
+      const v=quickEscape(x0+px*dx,ci,Math.min(maxIter,120));
+      let r=0,g=0,b=0;
+      if(v>=0){ const t=Math.log(1+v)*0.16, k=(Math.floor((((t%1)+1)%1)*2048))*3; r=LUT[k];g=LUT[k+1];b=LUT[k+2]; }
+      for(let yy=py;yy<Math.min(H,py+step);yy++) for(let xx=px;xx<Math.min(W,px+step);xx++){ const o=(yy*W+xx)*4; d[o]=r;d[o+1]=g;d[o+2]=b;d[o+3]=255; }
     }
   }
   ctx.putImageData(img,0,0);
-  // pass 2: full res, in strips, yielding to the browser between them
-  let row=0; const STRIP=24;
-  function strip(){
-    if(job!==renderJob) return;                 // a newer render started, abandon
-    const end=Math.min(H,row+STRIP);
-    for(let py=row;py<end;py++){
-      const ci=y0+py*dy;
-      for(let px=0;px<W;px++){
-        const v=escape(x0+px*dx,ci,maxIter);
-        const [r,g,b]=color(v);
-        const o=(py*W+px)*4; data[o]=r;data[o+1]=g;data[o+2]=b;data[o+3]=255;
-      }
-    }
-    ctx.putImageData(img,0,row,0,row,W,end-row);
-    row=end;
-    if(row<H) requestAnimationFrame(strip);
-    else { updateHud(performance.now()-t0); }
+  // hand strips to workers
+  const STRIP=Math.ceil(H/(NW*3));
+  for(let y=0;y<H;y+=STRIP){
+    const y1=Math.min(H,y+STRIP);
+    workers[(y/STRIP)%NW].postMessage({job,y0:y,y1,W,x0,cy0:y0,dx,dy,maxIter});
+    pending++;
   }
-  requestAnimationFrame(strip);
+  $("#prog").style.width="0%"; $("#prog").classList.add("on");
   updateHud(null);
 }
+function quickEscape(cr,ci,max){let x=0,y=0,i=0;while(x*x+y*y<=4&&i<max){const xt=x*x-y*y+cr;y=2*x*y+ci;x=xt;i++;}if(i===max)return -1;const l=Math.log(x*x+y*y)/2;return i+1-Math.log(l/Math.LN2)/Math.LN2;}
+let done=0;
+function onStrip(e){
+  const {job,y0,y1,out}=e.data;
+  if(job!==renderJob) return;
+  values.set(out,y0*W);
+  paint(y0,y1);
+  pending--;
+  const total=Math.ceil(H/Math.ceil(H/(NW*3)));
+  $("#prog").style.width=(100*(1-pending/total))+"%";
+  if(pending===0){ $("#prog").classList.remove("on"); updateHud(performance.now()-t0); }
+}
+function recolor(){ buildLUT(); if(values) paint(0,H); }
+
 function updateHud(ms){
   const zoom=3.2/width;
-  const z=zoom>=1e6?zoom.toExponential(2):zoom.toFixed(zoom<10?2:0);
-  $("#hud").innerHTML=`zoom <b>${z}x</b><br>center <b>${cx.toPrecision(10)}</b>, <b>${cy.toPrecision(10)}i</b><br>iterations <b>${maxIter}</b>${ms!==null?`<br>rendered in <b>${ms.toFixed(0)} ms</b>`:"<br>rendering..."}`;
-  history.replaceState(null,"",`#${cx},${cy},${width},${maxIter},${palette}`);
+  const z=zoom>=1e6?zoom.toExponential(2)+"x":(zoom<10?zoom.toFixed(2):Math.round(zoom).toLocaleString())+"x";
+  $("#hud").innerHTML=`<div class="zoom">${z}</div>re <b>${cx.toPrecision(12)}</b><br>im <b>${cy.toPrecision(12)}</b><br>iterations <b>${maxIter}</b> &middot; ${NW} workers${ms!==null?`<br>rendered in <b>${ms.toFixed(0)} ms</b>`:"<br>rendering..."}`;
+  history.replaceState(null,"",`#${cx},${cy},${width},${maxIter},${palette},${phase}`);
 }
 
+// ---------- julia preview ----------
+function drawJulia(cr,ci){
+  const JW=jcanvas.width,JH=jcanvas.height, jimg=jctx.createImageData(JW,JH), d=jimg.data;
+  const jw=3.2, jh=jw*JH/JW;
+  for(let py=0;py<JH;py++) for(let px=0;px<JW;px++){
+    let x=-jw/2+px/JW*jw, y=-jh/2+py/JH*jh, i=0;
+    while(x*x+y*y<=4&&i<160){ const xt=x*x-y*y+cr; y=2*x*y+ci; x=xt; i++; }
+    const o=(py*JW+px)*4;
+    if(i===160){ d[o]=0;d[o+1]=0;d[o+2]=0;d[o+3]=255; continue; }
+    const l=Math.log(x*x+y*y)/2, v=i+1-Math.log(l/Math.LN2)/Math.LN2;
+    const t=Math.log(1+v)*0.22, k=(Math.floor((((t%1)+1)%1)*2048))*3;
+    d[o]=LUT[k];d[o+1]=LUT[k+1];d[o+2]=LUT[k+2];d[o+3]=255;
+  }
+  jctx.putImageData(jimg,0,0);
+}
+let jTimer=null;
+function juliaAt(px,py){
+  if(!juliaOn) return;
+  const [r,i]=pixelToPlane(px,py);
+  jcanvas.classList.add("on"); $("#jlabel").classList.add("on");
+  clearTimeout(jTimer); jTimer=setTimeout(()=>drawJulia(r,i),16);
+}
+function juliaOff(){ jcanvas.classList.remove("on"); $("#jlabel").classList.remove("on"); }
+
 // ---------- navigation ----------
+function pixelToPlane(px,py){ const h=width*H/W; return [cx-width/2+px/W*width, cy-h/2+py/H*h]; }
+function canvasXY(e){ const r=canvas.getBoundingClientRect(), s=W/r.width; return [(e.clientX-r.left)*s,(e.clientY-r.top)*s]; }
 function zoomAt(px,py,factor){
   const [mx,my]=pixelToPlane(px,py);
   width/=factor;
-  // keep the point under the cursor fixed
   const h=width*H/W;
   cx=mx-(px/W-0.5)*width; cy=my-(py/H-0.5)*h;
   render();
 }
+// smooth glide: animate width + center toward a target over a few frames
+let anim=null;
+function glideTo(tx,ty,tw,ms=650){
+  if(anim) cancelAnimationFrame(anim);
+  const sx=cx,sy=cy,sw=width,start=performance.now();
+  const ease=t=>1-Math.pow(1-t,3);
+  function step(now){
+    const t=Math.min(1,(now-start)/ms), k=ease(t);
+    cx=sx+(tx-sx)*k; cy=sy+(ty-sy)*k;
+    width=sw*Math.pow(tw/sw,k);   // geometric interpolation so zoom feels linear
+    render();
+    if(t<1) anim=requestAnimationFrame(step); else anim=null;
+  }
+  anim=requestAnimationFrame(step);
+}
+function glideZoomAt(px,py,factor){
+  const [mx,my]=pixelToPlane(px,py);
+  const tw=width/factor, th=tw*H/W;
+  glideTo(mx-(px/W-0.5)*tw, my-(py/H-0.5)*th, tw);
+}
+
 let drag=null;
-stage.addEventListener("mousedown",e=>{drag={x:e.clientX,y:e.clientY,cx,cy,moved:false};});
+stage.addEventListener("mousedown",e=>{ drag={x:e.clientX,y:e.clientY,cx,cy,moved:false}; });
 window.addEventListener("mousemove",e=>{
-  if(!drag) return;
-  const r=canvas.getBoundingClientRect(), dpr=W/r.width;
-  const ddx=(e.clientX-drag.x)*dpr, ddy=(e.clientY-drag.y)*dpr;
-  if(Math.abs(ddx)+Math.abs(ddy)>4) drag.moved=true;
-  if(drag.moved){ cx=drag.cx-ddx*(width/W); cy=drag.cy-ddy*(width/W); render(); }
+  if(drag){
+    const r=canvas.getBoundingClientRect(), s=W/r.width;
+    const ddx=(e.clientX-drag.x)*s, ddy=(e.clientY-drag.y)*s;
+    if(Math.abs(ddx)+Math.abs(ddy)>4) drag.moved=true;
+    if(drag.moved){ cx=drag.cx-ddx*(width/W); cy=drag.cy-ddy*(width/W); render(); }
+  } else if(e.target===canvas){ const [px,py]=canvasXY(e); juliaAt(px,py); }
 });
+stage.addEventListener("mouseleave",juliaOff);
 window.addEventListener("mouseup",e=>{
   if(!drag) return;
-  if(!drag.moved){
-    const r=canvas.getBoundingClientRect(), dpr=W/r.width;
-    zoomAt((e.clientX-r.left)*dpr,(e.clientY-r.top)*dpr,2.5);
-  }
+  if(!drag.moved && e.target===canvas){ const [px,py]=canvasXY(e); glideZoomAt(px,py,3); }
   drag=null;
 });
 stage.addEventListener("wheel",e=>{
-  e.preventDefault();
-  const r=canvas.getBoundingClientRect(), dpr=W/r.width;
-  zoomAt((e.clientX-r.left)*dpr,(e.clientY-r.top)*dpr,e.deltaY<0?1.4:1/1.4);
+  e.preventDefault(); const [px,py]=canvasXY(e);
+  zoomAt(px,py,e.deltaY<0?1.35:1/1.35);
 },{passive:false});
-// touch: tap to zoom, one finger drag to pan
 let touch=null;
 stage.addEventListener("touchstart",e=>{const t=e.touches[0];touch={x:t.clientX,y:t.clientY,cx,cy,moved:false};},{passive:true});
 stage.addEventListener("touchmove",e=>{
-  if(!touch) return; const t=e.touches[0];
-  const r=canvas.getBoundingClientRect(), dpr=W/r.width;
-  const ddx=(t.clientX-touch.x)*dpr, ddy=(t.clientY-touch.y)*dpr;
+  if(!touch) return; const t=e.touches[0]; const r=canvas.getBoundingClientRect(), s=W/r.width;
+  const ddx=(t.clientX-touch.x)*s, ddy=(t.clientY-touch.y)*s;
   if(Math.abs(ddx)+Math.abs(ddy)>6) touch.moved=true;
   if(touch.moved){ cx=touch.cx-ddx*(width/W); cy=touch.cy-ddy*(width/W); render(); }
 },{passive:true});
-stage.addEventListener("touchend",e=>{
-  if(touch&&!touch.moved){
-    const r=canvas.getBoundingClientRect(), dpr=W/r.width;
-    zoomAt((touch.x-r.left)*dpr,(touch.y-r.top)*dpr,2.5);
-  }
+stage.addEventListener("touchend",()=>{
+  if(touch&&!touch.moved){ const r=canvas.getBoundingClientRect(), s=W/r.width; glideZoomAt((touch.x-r.left)*s,(touch.y-r.top)*s,3); }
   touch=null;
 });
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
+  const pan=width*0.08;
+  if(e.key==="+"||e.key==="=") zoomAt(W/2,H/2,1.6);
+  else if(e.key==="-") zoomAt(W/2,H/2,1/1.6);
+  else if(e.key==="ArrowLeft"){cx-=pan;render();}
+  else if(e.key==="ArrowRight"){cx+=pan;render();}
+  else if(e.key==="ArrowUp"){cy-=pan;render();}
+  else if(e.key==="ArrowDown"){cy+=pan;render();}
+  else if(e.key==="r"){cx=-0.75;cy=0;width=3.2;render();}
+  else if(e.key==="j"){juliaOn=!juliaOn; if(!juliaOn) juliaOff();}
+});
 
-$("#reset").onclick=()=>{cx=-0.75;cy=0;width=3.2;render();};
+$("#reset").onclick=()=>glideTo(-0.75,0,3.2,800);
 $("#zoomIn").onclick=()=>zoomAt(W/2,H/2,2);
 $("#zoomOut").onclick=()=>zoomAt(W/2,H/2,0.5);
-$("#palette").onchange=e=>{palette=e.target.value;render();};
+$("#palette").onchange=e=>{palette=e.target.value;recolor();updateHud(null);};
+$("#phase").oninput=e=>{phase=+e.target.value;$("#phasev").textContent=phase;recolor();};
 $("#iter").oninput=e=>{maxIter=+e.target.value;$("#iterv").textContent=maxIter;};
 $("#iter").onchange=()=>render();
 $("#save").onclick=()=>{const a=document.createElement("a");a.download="mandelbrot.png";a.href=canvas.toDataURL();a.click();};
+$("#share").onclick=async()=>{ try{ await navigator.clipboard.writeText(location.href); $("#share").textContent="copied"; setTimeout(()=>$("#share").textContent="copy link",1400);}catch{ prompt("copy this link", location.href);} };
 
-// famous spots worth visiting
 const SPOTS=[
-  ["the whole thing",-0.75,0,3.2,400],
-  ["seahorse valley",-0.7463,0.1102,0.005,800],
-  ["elephant valley",0.2929859127507,0.0136572365,0.003,800],
-  ["spiral",-0.7453,0.1127,0.00065,1200],
-  ["mini mandelbrot",-1.7684,0.0009,0.004,800],
-  ["lightning",-0.1592,-1.0317,0.002,1000],
-  ["deep",-0.743643887037158704752191506114774,0.131825904205311970493132056385139,0.00000004,2000],
+  ["the whole thing",-0.75,0,3.2,500],
+  ["seahorse valley",-0.7463,0.1102,0.005,1000],
+  ["elephant valley",0.2929859127507,0.0136572365,0.003,1000],
+  ["double spiral",-0.7453,0.1127,0.00065,1500],
+  ["mini mandelbrot",-1.7684,0.0009,0.004,1000],
+  ["lightning",-0.1592,-1.0317,0.002,1200],
+  ["the needle",-1.99999,0,0.00015,1500],
+  ["deep",-0.743643887037158704752191506114774,0.131825904205311970493132056385139,0.00000004,2500],
 ];
 for(const [name,x,y,w,it] of SPOTS){
   const b=document.createElement("button"); b.textContent=name;
-  b.onclick=()=>{cx=x;cy=y;width=w;maxIter=it;$("#iter").value=it;$("#iterv").textContent=it;render();};
+  b.onclick=()=>{ maxIter=it;$("#iter").value=it;$("#iterv").textContent=it; glideTo(x,y,w,1200); };
   $("#spots").appendChild(b);
 }
-
-// restore a shared view from the url hash
 function fromHash(){
   const h=location.hash.slice(1).split(",");
   if(h.length>=3&&!isNaN(+h[0])){
     cx=+h[0];cy=+h[1];width=+h[2];
-    if(h[3]) {maxIter=+h[3];$("#iter").value=maxIter;$("#iterv").textContent=maxIter;}
-    if(h[4]&&PALETTES[h[4]]) {palette=h[4];$("#palette").value=palette;}
+    if(h[3]){maxIter=+h[3];$("#iter").value=maxIter;$("#iterv").textContent=maxIter;}
+    if(h[4]&&PALETTES[h[4]]){palette=h[4];$("#palette").value=palette;}
+    if(h[5]){phase=+h[5];$("#phase").value=phase;$("#phasev").textContent=phase;}
   }
 }
-window.addEventListener("resize",()=>{fit();render();});
-fromHash(); fit(); render();
+let rz=null; window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{fit();render();},120);});
+fromHash(); buildLUT(); fit(); render();
 </script>
 </body>
 </html>
