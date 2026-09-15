@@ -228,42 +228,62 @@ function fit(){
   canvas.width=W; canvas.height=H; canvas.style.height=(H/dpr)+"px";
   img=ctx.createImageData(W,H); values=new Float32Array(W*H);
 }
-let pending=0, t0=0;
+let pending=0, t0=0, totalStrips=0, inFlight=false, wantRender=false;
+
+// the rule: only ONE full render in flight at a time. if anything asks for a
+// render while one is running, remember it and run once more when this one
+// finishes. otherwise a glide animation floods the workers with 60 jobs a
+// second, most get abandoned half done, and you get alternating stripes.
 function render(){
-  const job=++renderJob; pending=0; t0=performance.now();
+  if(inFlight){ wantRender=true; previewOnly(); return; }
+  startRender();
+}
+function previewOnly(){
   const h=width*H/W, x0=cx-width/2, y0=cy-h/2, dx=width/W, dy=h/H;
-  // quick coarse preview on the main thread so the screen changes instantly
+  coarsePreview(x0,y0,dx,dy);
+  updateHud(null);
+}
+function coarsePreview(x0,y0,dx,dy){
   const step=6, d=img.data;
   for(let py=0;py<H;py+=step){ const ci=y0+py*dy;
     for(let px=0;px<W;px+=step){
-      const v=quickEscape(x0+px*dx,ci,Math.min(maxIter,120));
+      // same iteration cap as the real pass so the preview colors match
+      const v=quickEscape(x0+px*dx,ci,maxIter);
       let r=0,g=0,b=0;
       if(v>=0){ const t=Math.log(1+v)*0.16, k=(Math.floor((((t%1)+1)%1)*2048))*3; r=LUT[k];g=LUT[k+1];b=LUT[k+2]; }
       for(let yy=py;yy<Math.min(H,py+step);yy++) for(let xx=px;xx<Math.min(W,px+step);xx++){ const o=(yy*W+xx)*4; d[o]=r;d[o+1]=g;d[o+2]=b;d[o+3]=255; }
     }
   }
   ctx.putImageData(img,0,0);
-  // hand strips to workers
+}
+function startRender(){
+  const job=++renderJob; pending=0; t0=performance.now(); inFlight=true; wantRender=false;
+  const h=width*H/W, x0=cx-width/2, y0=cy-h/2, dx=width/W, dy=h/H;
+  coarsePreview(x0,y0,dx,dy);
   const STRIP=Math.ceil(H/(NW*3));
+  let k=0;
   for(let y=0;y<H;y+=STRIP){
     const y1=Math.min(H,y+STRIP);
-    workers[(y/STRIP)%NW].postMessage({job,y0:y,y1,W,x0,cy0:y0,dx,dy,maxIter});
-    pending++;
+    workers[k%NW].postMessage({job,y0:y,y1,W,x0,cy0:y0,dx,dy,maxIter});
+    k++; pending++;
   }
+  totalStrips=pending;
   $("#prog").style.width="0%"; $("#prog").classList.add("on");
   updateHud(null);
 }
 function quickEscape(cr,ci,max){let x=0,y=0,i=0;while(x*x+y*y<=4&&i<max){const xt=x*x-y*y+cr;y=2*x*y+ci;x=xt;i++;}if(i===max)return -1;const l=Math.log(x*x+y*y)/2;return i+1-Math.log(l/Math.LN2)/Math.LN2;}
-let done=0;
 function onStrip(e){
   const {job,y0,y1,out}=e.data;
   if(job!==renderJob) return;
   values.set(out,y0*W);
   paint(y0,y1);
   pending--;
-  const total=Math.ceil(H/Math.ceil(H/(NW*3)));
-  $("#prog").style.width=(100*(1-pending/total))+"%";
-  if(pending===0){ $("#prog").classList.remove("on"); updateHud(performance.now()-t0); }
+  $("#prog").style.width=(100*(1-pending/totalStrips))+"%";
+  if(pending===0){
+    inFlight=false;
+    $("#prog").classList.remove("on"); updateHud(performance.now()-t0);
+    if(wantRender) startRender();   // state changed while we were busy, go again
+  }
 }
 function recolor(){ buildLUT(); if(values) paint(0,H); }
 
