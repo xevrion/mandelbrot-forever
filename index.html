@@ -135,9 +135,8 @@
 </head>
 <body>
 <header>
-  <p class="eyebrow">z = z&sup2; + c</p>
   <h1>mandelbrot forever</h1>
-  <p>a shape with an infinitely detailed edge. zoom in anywhere on the boundary and there is always more. all of it comes from one line of math, repeated.</p>
+  <p>one line of math, z = z&sup2; + c, zoomed until the numbers give out.</p>
 </header>
 <main>
   <div class="panel">
@@ -170,59 +169,11 @@
       <span><kbd>click</kbd> glide in</span><span><kbd>scroll</kbd> zoom</span><span><kbd>drag</kbd> pan</span><span><kbd>pinch</kbd> zoom on touch</span>
       <span><kbd>+</kbd> <kbd>-</kbd> zoom</span><span><kbd>arrows</kbd> pan</span><span><kbd>r</kbd> reset</span><span><kbd>j</kbd> toggle julia</span>
     </div>
-    <div class="why"><b>what you're seeing:</b> every pixel is a point c in the complex plane (left-right is the real part, up-down is the imaginary part). black means we iterated z = z<sup>2</sup> + c and it never escaped, so it's in the set. colors mean it escaped, and the shade tells you how fast: points far from the set escape in a few steps, points hugging the edge take hundreds. <b>detail</b> is the max iterations before we give up and call a point black. deep zooms need more of it because points near the edge take longer to decide, so by default it rises on its own as you zoom (that's the <b>auto</b> button), and you can drag the slider to override it. <b>shift</b> rotates the colors through the palette live. the corner window is the julia set for wherever your mouse is, and every point in the complex plane has its own, so you're seeing an infinite family of fractals by just moving your hand. the hud shows zoom: 1x is the whole shape, and you can go to about a hundred million million million million x (10<sup>26</sup>) before the numbers run out of precision.</div>
   </div>
 
   <hr class="sep">
-  <div class="panel explain">
-    <h3>wait, what is this</h3>
-    <p>this is the <b>mandelbrot set</b>, probably the most famous picture in all of math. the black shape in the middle is the set itself, and the colors around it show how quickly each point outside it "escapes". the wild part is the edge: no matter how far you zoom in, it never gets smooth. there are tiny copies of the whole shape hiding inside its own edge, forever. genuinely infinite detail from a formula you could write on a napkin.</p>
-    <p>and here's the thing that gets people: the formula is <b>z = z<sup>2</sup> + c</b>. that's it. pick a point c, start z at zero, and keep squaring and adding. if z stays small forever, the point is in the set (black). if it blows up to infinity, it's outside, and the color tells you how many steps it took to blow up. every single pixel on screen is that one calculation, done hundreds or thousands of times.</p>
-    <p><b>how to explore:</b> click anywhere to glide into that spot. scroll to zoom, drag to pan, pinch on a phone. hover and watch the little window in the corner, that's the <b>julia set</b> for the point under your cursor, a whole second fractal that changes as you move. try the bookmarked spots for the famous places. the url updates as you go, so copy it to share anywhere you find.</p>
-  </div>
 
   <hr class="sep">
-  <div class="panel explain">
-    <h3>how it's actually built (the whole thing is one file)</h3>
-    <p>this is the entire algorithm. for one pixel, given its point (cx, cy), count the steps until it escapes:</p>
-<pre>function escape(cx, cy, maxIter){
-  let x=0, y=0, i=0;
-  while(x*x + y*y &lt;= 10000 &amp;&amp; i &lt; maxIter){
-    const xt = x*x - y*y + cx;   // real part of z^2 + c
-    y = 2*x*y + cy;              // imaginary part of z^2 + c
-    x = xt; i++;
-  }
-  return i;
-}</pre>
-    <p>that's z = z<sup>2</sup> + c written out with real and imaginary parts, because javascript has no complex number type. the escape test is the <code>x*x + y*y</code> check: once z gets further than 2 from the origin it is mathematically guaranteed to fly off to infinity, so we could stop right there. we let it run a bit further (to a radius of 100) because the smooth coloring below gets more accurate the further out you measure.</p>
-
-    <h3>why the colors are smooth and not banded</h3>
-    <p>if you color by the raw integer iteration count you get ugly hard stripes. the fix is <b>smooth coloring</b>: after the point escapes, look at how far past the bailout radius it overshot, and use that to add a fraction to the count. so instead of "escaped at step 37" you get "escaped at step 37.62", and that fractional part is what makes the gradients silky:</p>
-<pre>const log_zn = Math.log(x*x + y*y) / 2;
-const nu = Math.log(log_zn / Math.LN2) / Math.LN2;
-const smooth = i + 1 - nu;   // fractional iteration count</pre>
-    <p>that number then picks a color from the palette. the palette is a loop, and the position in the loop comes from a mix of the log and the square root of the smooth count, which spreads the colors out so both the calm outside and the busy edge get a full range instead of one flat tone. the palettes themselves are blended in <b>oklab</b> rather than plain rgb, which is why the transitions don't go muddy or grey in the middle. the gpu samples the palette as a texture with linear filtering, so there is no lookup-table stepping at all.</p>
-
-    <h3>how it runs on the gpu</h3>
-    <p>every pixel is independent, which is exactly the kind of work a gpu eats for breakfast, so if your browser has <b>webgl2</b> the whole image is a single fragment shader and a full frame usually takes a few milliseconds. that's why zooming feels like a video instead of a slideshow: every frame of the glide is a real render, not a stretched copy of the last one.</p>
-    <p>the catch is that gpus only do 32-bit floats, which run out of precision at about a hundred thousand times zoom. the trick that gets around it is called <b>perturbation</b>. the cpu computes one full orbit for the point at the center of the screen using 64-bit doubles, and uploads it to the gpu as a texture. each pixel then only tracks its tiny <b>difference</b> from that reference orbit, and the difference stays small enough for 32-bit math to handle:</p>
-<pre>// dz is this pixel's offset from the reference orbit Z, dc its offset from the reference point
-dz = 2*Z[n]*dz + dz*dz + dc;      // same formula, expanded around the reference
-z  = Z[n+1] + dz;                 // the real value is reference plus offset
-if (|z| &lt; |dz|) { dz = z; n = 0; }   // "rebasing": if the offset got bigger than the value, start over</pre>
-    <p>that last line is the whole reason it works on a plain reference orbit with no glitch-fixing passes. when a pixel's orbit drifts away from the reference, it just re-anchors itself to the start of the orbit and carries on. the same idea is what real deep zoom programs use to go to 10<sup>1000</sup>x, they just use arbitrary-precision numbers for the reference.</p>
-    <p>plain 64-bit doubles for the reference point run out at about 10<sup>13</sup>x, and you could feel it: panning would freeze because one pixel of movement was smaller than the gap between two representable numbers. so the center of the view is stored as a <b>double-double</b>, two floats stacked so the second one holds the rounding error of the first. that gives about 32 digits, which is enough for the reference orbit to stay honest out to roughly 10<sup>26</sup>x.</p>
-
-    <h3>and when there is no gpu</h3>
-    <p>if webgl2 isn't available (or the gpu bails out mid-session) the page falls back to plain javascript spread across <b>web workers</b>, one per cpu core, running the same math in doubles (the plain loop when shallow, perturbation once you are deep). the image is cut into horizontal strips of a few rows each and the workers pull strips off a shared queue, so a fast core just takes more strips. the main thread paints each strip as it lands, a quick low-res pass runs first so you see something instantly, and while you're moving it shows the last finished frame stretched to the new view so nothing ever tears. the little progress bar at the top of the image is the strips arriving. the <b>render</b> switch in the toolbar flips between the two live, so you can feel the difference yourself.</p>
-
-    <h3>the julia set in the corner</h3>
-    <p>the mandelbrot set asks "starting at z=0, does this c escape?" a <b>julia set</b> flips it: fix c, and ask for every starting z whether IT escapes. so every point c on the main image has its own julia set, and they're all different. points inside the mandelbrot set give connected julia sets, points outside give dust. hover along the edge and watch them morph, it's the same six lines of code with the roles of z and c swapped, running in its own little worker so it never gets in the way.</p>
-
-    <h3>why it eventually breaks</h3>
-    <p>the double-double trick buys about 32 digits, so somewhere past 10<sup>26</sup>x neighbouring pixels stop being distinguishable and you see blocks or noise. that's not the fractal ending, it's the number type running out. real deep-zoom software keeps the reference point in arbitrary-precision arithmetic (as many digits as the zoom needs) and goes to 10<sup>100</sup>x and beyond. that's on the try-later list.</p>
-    <p>everything on this page is one html file, no libraries, no build, nothing to install. the source is on <a href="https://github.com/xevrion/mandelbrot-forever">github</a>.</p>
-  </div>
 </main>
 
 <script id="worker-src" type="text/plain">
